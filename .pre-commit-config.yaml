@@ -38,19 +38,19 @@ repos:
 
   # YAML formatting
 - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
-  rev: v2.15.0
+  rev: v2.16.0
   hooks:
   - id: pretty-format-yaml
     args: [--autofix, --indent, '2']
   # Check for common spelling mistakes
 - repo: https://github.com/codespell-project/codespell
-  rev: v2.2.6
+  rev: v2.4.2
   hooks:
   - id: codespell
     args: ['--ignore-words-list=crate,nd,ser,te', '--skip=*.json,*.lock']
 
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.8.3
+  rev: v0.15.6
   hooks:
   - id: ruff
     args:

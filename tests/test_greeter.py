@@ -10,7 +10,7 @@ from project_name.greeter import Greeter, Language
         (Language.ES, "Hola, {name}!"),
         (Language.FR, "Bonjour, {name}!"),
         (Language.DE, "Hallo, {name}!"),
-        (Language.IT, "Ciao, Mario Potato!"),
+        (Language.IT, "Ciao, {name}!"),
         (Language.PT, "Olá, {name}!"),
         (Language.ZH, "你好, {name}!"),
         (Language.JA, "こんにちは, {name}!"),

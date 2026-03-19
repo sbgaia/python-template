@@ -25,8 +25,8 @@ def get_language(language: str | Language) -> Language:
     """Get the corresponding language code from the Language enum.
 
     Args:
-        language (str | Language): The language code as a string or Language
-        enum.
+        language (str | Language): The language code as a string or
+            `Language` enum.
 
     Returns:
         Language: The corresponding Language enum member.
@@ -66,7 +66,7 @@ class Greeter:
         Args:
             name (str): The name of the person to greet.
             language (str | Language, optional): The language code for the
-            greeting. Defaults to Language.EN.
+                greeting. Defaults to `Language.EN`.
         """
         self.name = name
         self.language = get_language(language)
@@ -77,6 +77,4 @@ class Greeter:
         Returns:
             str: The greeting message.
         """
-        if self.language == Language.IT:
-            return f"{self.GREETINGS[self.language]}, Mario Potato!"
         return f"{self.GREETINGS[self.language]}, {self.name}!"
