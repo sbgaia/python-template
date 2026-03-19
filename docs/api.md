@@ -1,7 +1,7 @@
 # API Reference
 
-::: python_template
+::: project_name
 
 ## Module Reference
 
-::: python_template.greeter
+::: project_name.greeter

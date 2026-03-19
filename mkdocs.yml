@@ -1,4 +1,4 @@
-site_name: python_template
+site_name: project_name
 site_description: A simple template project.
 repo_name: python-template
 theme:
