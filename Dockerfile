@@ -10,10 +10,10 @@ RUN apk add --update --no-cache gcc musl-dev
 RUN pip install --no-cache-dir uv
 
 COPY README.md pyproject.toml uv.lock ./
-COPY project_name/ project_name
+COPY python_template/ python_template
 COPY examples/ examples
 
 RUN uv sync --locked --no-dev
-RUN python -m compileall -o 2 -f -j 0 /app/project_name/
+RUN python -m compileall -o 2 -f -j 0 /app/python_template/
 
 CMD ["uv", "run", "python", "examples/say_hi.py"]

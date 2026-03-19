@@ -1,4 +1,4 @@
-from project_name.greeter import Greeter
+from python_template.greeter import Greeter
 
 if __name__ == "__main__":
     # Example usage within the project template
