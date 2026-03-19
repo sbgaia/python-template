@@ -171,3 +171,71 @@ def test_bootstrap_template_uses_custom_package_name(tmp_path: Path) -> None:
     assert "::: custom_pkg" in (repo_dir / "docs" / "api.md").read_text(
         encoding="utf-8"
     )
+
+
+def test_bootstrap_template_uses_github_metadata(tmp_path: Path) -> None:
+    repo_dir = tmp_path / "placeholder"
+    repo_dir.mkdir()
+    (repo_dir / ".devcontainer").mkdir()
+    (repo_dir / "docs").mkdir()
+    (repo_dir / "project_name").mkdir()
+
+    (repo_dir / ".devcontainer" / "devcontainer.json").write_text(
+        '{"workspaceFolder": "/workspaces/python-template"}\n',
+        encoding="utf-8",
+    )
+    (repo_dir / "README.md").write_text("# Python Template\n", encoding="utf-8")
+    (repo_dir / "docs" / "index.md").write_text(
+        "# project_name\n", encoding="utf-8"
+    )
+    (repo_dir / "docs" / "api.md").write_text(
+        "::: project_name\n", encoding="utf-8"
+    )
+    (repo_dir / "mkdocs.yml").write_text(
+        "site_name: project_name\nrepo_name: python-template\n",
+        encoding="utf-8",
+    )
+    (repo_dir / "pyproject.toml").write_text(
+        "[project]\n"
+        'name = "project_name"\n'
+        'description = "A simple template project."\n'
+        'authors = [{ name = "Mario Potato", '
+        'email = "mario.potato@univr.it" }]\n'
+        "\n"
+        "[tool.ruff.lint.isort]\n"
+        'known-first-party = ["project_name"]\n',
+        encoding="utf-8",
+    )
+
+    env = {
+        "GITHUB_REPOSITORY": "octo-org/demo-service",
+        "GITHUB_REPOSITORY_OWNER": "octo-org",
+        "GITHUB_ACTOR": "octocat",
+        "GITHUB_ACTOR_ID": "12345",
+    }
+
+    subprocess.run(
+        [
+            sys.executable,
+            str(
+                Path(
+                    "/home/sebastiano/python-template/scripts/bootstrap_template.py"
+                )
+            ),
+            "--from-github",
+        ],
+        cwd=repo_dir,
+        check=True,
+        env=env,
+    )
+
+    assert (repo_dir / "demo_service").exists()
+    assert 'name = "demo-service"' in (repo_dir / "pyproject.toml").read_text(
+        encoding="utf-8"
+    )
+    assert 'name = "octo-org"' in (repo_dir / "pyproject.toml").read_text(
+        encoding="utf-8"
+    )
+    assert "12345+octocat@users.noreply.github.com" in (
+        repo_dir / "pyproject.toml"
+    ).read_text(encoding="utf-8")

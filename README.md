@@ -12,6 +12,13 @@ python scripts/bootstrap_template.py your-repository-name
 
 This renames the placeholder package directory, updates the package metadata, and rewrites the main `project_name` and `python-template` references across the repository. Use `--package-name`, `--project-title`, `--author`, `--author-email`, or `--description` if the defaults inferred from the repository name are not enough.
 
+When the repository is created on GitHub from `Use this template`, the
+`Bootstrap Template` workflow also runs automatically on the first push and
+uses GitHub metadata to rename the repository placeholders. It derives the
+repository name from `github.repository`, the author from
+`github.repository_owner`, and the author email from the GitHub noreply
+address for the triggering actor.
+
 ## Getting started
 
 - <code>Use this template > Create a new repository</code> : You can clone this template from the UI by clicking on the upper left repository button.

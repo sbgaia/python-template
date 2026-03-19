@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 from pathlib import Path
 
@@ -38,8 +39,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "repository_name",
         nargs="?",
-        default=Path.cwd().name,
-        help="Repository/distribution name, defaults to the current directory.",
+        help=(
+            "Repository/distribution name. Defaults to GitHub metadata "
+            "or the current directory."
+        ),
     )
     parser.add_argument(
         "--package-name",
@@ -71,11 +74,64 @@ def parse_args() -> argparse.Namespace:
         help="Package description to write into project metadata.",
     )
     parser.add_argument(
+        "--from-github",
+        action="store_true",
+        help=(
+            "Infer repository metadata from GitHub Actions environment "
+            "variables."
+        ),
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print the planned changes without modifying files.",
     )
     return parser.parse_args()
+
+
+def github_noreply_email() -> str:
+    """Build a GitHub noreply email address from available environment data."""
+    actor = os.environ.get("GITHUB_ACTOR", "").strip()
+    actor_id = os.environ.get("GITHUB_ACTOR_ID", "").strip()
+    if actor and actor_id:
+        return f"{actor_id}+{actor}@users.noreply.github.com"
+    if actor:
+        return f"{actor}@users.noreply.github.com"
+    return PLACEHOLDER_AUTHOR_EMAIL
+
+
+def resolve_metadata(args: argparse.Namespace) -> dict[str, str]:
+    """Resolve bootstrap metadata from args and GitHub context."""
+    repository_name = (
+        args.repository_name or os.environ.get("GITHUB_REPOSITORY", "")
+    ).strip()
+    if "/" in repository_name:
+        repository_name = repository_name.rsplit("/", maxsplit=1)[-1]
+    if not repository_name:
+        repository_name = Path.cwd().name
+
+    package_name = (
+        args.package_name or repository_name.replace("-", "_")
+    ).strip()
+    project_title = (
+        args.project_title
+        or repository_name.replace("-", " ").replace("_", " ").title()
+    ).strip()
+
+    author = args.author
+    author_email = args.author_email
+    if args.from_github:
+        author = os.environ.get("GITHUB_REPOSITORY_OWNER", "").strip() or author
+        author_email = github_noreply_email()
+
+    return {
+        "repository_name": repository_name,
+        "package_name": package_name,
+        "project_title": project_title,
+        "author": author,
+        "author_email": author_email,
+        "description": args.description,
+    }
 
 
 def replace_text(
@@ -205,14 +261,10 @@ def rename_package_dir(package_name: str, *, dry_run: bool) -> None:
 def main() -> int:
     """Run the template bootstrap process."""
     args = parse_args()
-    repository_name = args.repository_name.strip()
-    package_name = (
-        args.package_name or repository_name.replace("-", "_")
-    ).strip()
-    project_title = (
-        args.project_title
-        or repository_name.replace("-", " ").replace("_", " ").title()
-    ).strip()
+    metadata = resolve_metadata(args)
+    repository_name = metadata["repository_name"]
+    package_name = metadata["package_name"]
+    project_title = metadata["project_title"]
 
     if not repository_name:
         raise ValueError("repository_name must not be empty.")
@@ -255,9 +307,9 @@ def main() -> int:
         Path("pyproject.toml"),
         repository_name=repository_name,
         package_name=package_name,
-        author=args.author,
-        author_email=args.author_email,
-        description=args.description,
+        author=metadata["author"],
+        author_email=metadata["author_email"],
+        description=metadata["description"],
         dry_run=args.dry_run,
     )
     rename_package_dir(package_name, dry_run=args.dry_run)
