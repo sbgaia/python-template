@@ -15,11 +15,11 @@ dev = [
     "mypy>=1.19.1,<2",
     "ruff>=0.15.6,<0.16",
     "tox>=4.50.1,<5",
-    "pytest>=8.4.2,<9",
-    "pytest-cov>=6.3.0,<7",
+    "pytest>=8.4.2,<10",
+    "pytest-cov>=6.3.0,<8",
     "mkdocs>=1.6.1,<2",
     "mkdocs-material>=9.6.20,<10",
-    "mkdocstrings[python]>=0.30.1,<0.31",
+    "mkdocstrings[python]>=0.30.1,<1.1",
 ]
 
 [build-system]
