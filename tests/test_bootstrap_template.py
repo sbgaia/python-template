@@ -2,6 +2,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+BOOTSTRAP_SCRIPT = (
+    Path(__file__).resolve().parents[1] / "scripts" / ("bootstrap_template.py")
+)
+
 
 def test_bootstrap_template_renames_placeholders(tmp_path: Path) -> None:
     repo_dir = tmp_path / "demo-service"
@@ -71,11 +75,7 @@ def test_bootstrap_template_renames_placeholders(tmp_path: Path) -> None:
     subprocess.run(
         [
             sys.executable,
-            str(
-                Path(
-                    "/home/sebastiano/python-template/scripts/bootstrap_template.py"
-                )
-            ),
+            str(BOOTSTRAP_SCRIPT),
             "demo-service",
             "--author",
             "Ada Lovelace",
@@ -151,11 +151,7 @@ def test_bootstrap_template_uses_custom_package_name(tmp_path: Path) -> None:
     subprocess.run(
         [
             sys.executable,
-            str(
-                Path(
-                    "/home/sebastiano/python-template/scripts/bootstrap_template.py"
-                )
-            ),
+            str(BOOTSTRAP_SCRIPT),
             "demo-service",
             "--package-name",
             "custom_pkg",
@@ -217,11 +213,7 @@ def test_bootstrap_template_uses_github_metadata(tmp_path: Path) -> None:
     subprocess.run(
         [
             sys.executable,
-            str(
-                Path(
-                    "/home/sebastiano/python-template/scripts/bootstrap_template.py"
-                )
-            ),
+            str(BOOTSTRAP_SCRIPT),
             "--from-github",
         ],
         cwd=repo_dir,
