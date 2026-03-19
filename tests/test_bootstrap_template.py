@@ -99,9 +99,9 @@ def test_bootstrap_template_renames_placeholders(tmp_path: Path) -> None:
     assert "# Demo Service" in (repo_dir / "README.md").read_text(
         encoding="utf-8"
     )
-    assert "# Demo Service" in (
-        repo_dir / "docs" / "index.md"
-    ).read_text(encoding="utf-8")
+    assert "# Demo Service" in (repo_dir / "docs" / "index.md").read_text(
+        encoding="utf-8"
+    )
     assert 'name = "demo-service"' in (repo_dir / "pyproject.toml").read_text(
         encoding="utf-8"
     )
