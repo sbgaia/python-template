@@ -13,7 +13,7 @@ jobs:
     if: github.event.repository.is_template == false && github.actor != 'github-actions[bot]' && (github.event_name != 'create' || github.event.ref_type == 'branch')
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
       with:
         fetch-depth: 0
         ref: ${{ github.event.repository.default_branch }}
