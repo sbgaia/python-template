@@ -3,10 +3,6 @@ name: Bootstrap Template
 on:
   create:
   workflow_dispatch:
-    inputs:
-      minimum_python_version:
-        description: Minimum Python version supported by the generated project.
-        required: false
   push:
 
 permissions:
@@ -36,14 +32,8 @@ jobs:
         python-version: '3.13'
     - name: Bootstrap repository metadata
       if: steps.placeholders.outputs.needs_bootstrap == 'true'
-      run: |
-        args=(--from-github)
-        if [ -n "$MINIMUM_PYTHON_VERSION" ]; then
-          args+=(--minimum-python-version "$MINIMUM_PYTHON_VERSION")
-        fi
-        python scripts/bootstrap_template.py "${args[@]}"
+      run: python scripts/bootstrap_template.py --from-github
       env:
-        MINIMUM_PYTHON_VERSION: ${{ inputs.minimum_python_version }}
         GITHUB_REPOSITORY: ${{ github.repository }}
         GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
         GITHUB_ACTOR: ${{ github.actor }}

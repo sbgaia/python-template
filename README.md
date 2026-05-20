@@ -11,11 +11,9 @@ python scripts/bootstrap_template.py your-repository-name
 ```
 
 This renames the placeholder package directory, updates the package metadata,
-sets the minimum supported Python version, and rewrites the main `project_name`
-and `python-template` references across the repository. The minimum Python
-version defaults to the interpreter running the bootstrap script. Use
-`--minimum-python-version` to override it with one of `3.10`, `3.11`, `3.12`,
-`3.13`, or `3.14`.
+and rewrites the main `project_name` and `python-template` references across
+the repository. Use `--minimum-python-version` to also configure Python support
+with one of `3.10`, `3.11`, `3.12`, `3.13`, or `3.14`.
 Use `--package-name`, `--project-title`, `--author`, `--author-email`, or
 `--description` if the defaults inferred from the repository name are not
 enough.
@@ -29,7 +27,6 @@ address for the triggering actor.
 
 If GitHub does not run that first automation in your environment, you can still
 run the `Bootstrap Template` workflow manually from the Actions tab.
-The manual workflow exposes the same minimum Python version setting.
 
 ## Getting started
 

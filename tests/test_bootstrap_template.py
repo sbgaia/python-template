@@ -5,7 +5,6 @@ from pathlib import Path
 import pytest
 
 from scripts.bootstrap_template import (
-    current_python_version,
     format_tox_env,
     normalize_minimum_python_version,
     parse_args,
@@ -18,14 +17,14 @@ BOOTSTRAP_SCRIPT = (
 )
 
 
-def test_bootstrap_template_defaults_python_version_to_interpreter(
+def test_bootstrap_template_leaves_python_version_unconfigured_by_default(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(sys, "argv", ["bootstrap_template.py"])
 
     metadata = resolve_metadata(parse_args())
 
-    assert metadata["minimum_python_version"] == current_python_version()
+    assert "minimum_python_version" not in metadata
 
 
 def test_bootstrap_template_rejects_unsupported_python_version() -> None:
@@ -312,7 +311,7 @@ def test_bootstrap_template_updates_minimum_python_version(
         "commands = python -m pytest\n",
         encoding="utf-8",
     )
-    (repo_dir / ".github" / "workflows" / "ci.yaml").write_text(
+    ci_workflow = (
         "jobs:\n"
         "  test:\n"
         "    strategy:\n"
@@ -322,7 +321,10 @@ def test_bootstrap_template_updates_minimum_python_version(
         "    - name: Run type checks\n"
         "      if: matrix.python-version == '3.10'\n"
         "    - name: Build documentation\n"
-        "      if: matrix.python-version == '3.10'\n",
+        "      if: matrix.python-version == '3.10'\n"
+    )
+    (repo_dir / ".github" / "workflows" / "ci.yaml").write_text(
+        ci_workflow,
         encoding="utf-8",
     )
     (repo_dir / "uv.lock").write_text(

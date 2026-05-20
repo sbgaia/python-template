@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import os
 import re
-import sys
 from pathlib import Path
 
 PLACEHOLDER_PACKAGE = "project_name"
@@ -33,11 +32,6 @@ REPOSITORY_FILES = (
 )
 DOCS_INDEX = Path("docs/index.md")
 PACKAGE_DIR = Path(PLACEHOLDER_PACKAGE)
-
-
-def current_python_version() -> str:
-    """Return the major.minor version of the running Python interpreter."""
-    return f"{sys.version_info.major}.{sys.version_info.minor}"
 
 
 def parse_args() -> argparse.Namespace:
@@ -83,11 +77,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--minimum-python-version",
         "--min-python-version",
-        default=current_python_version(),
         help=(
-            "Minimum supported Python version. Supported values: "
-            f"{', '.join(SUPPORTED_PYTHON_VERSIONS)}. Defaults to the "
-            "Python interpreter running this script."
+            "Optionally set the minimum supported Python version. Supported "
+            f"values: {', '.join(SUPPORTED_PYTHON_VERSIONS)}."
         ),
     )
     parser.add_argument(
@@ -181,19 +173,19 @@ def resolve_metadata(args: argparse.Namespace) -> dict[str, str]:
         author = os.environ.get("GITHUB_REPOSITORY_OWNER", "").strip() or author
         author_email = github_noreply_email()
 
-    minimum_python_version = normalize_minimum_python_version(
-        str(args.minimum_python_version)
-    )
-
-    return {
+    metadata = {
         "repository_name": repository_name,
         "package_name": package_name,
         "project_title": project_title,
         "author": author,
         "author_email": author_email,
         "description": args.description,
-        "minimum_python_version": minimum_python_version,
     }
+    if args.minimum_python_version is not None:
+        metadata["minimum_python_version"] = normalize_minimum_python_version(
+            str(args.minimum_python_version)
+        )
+    return metadata
 
 
 def replace_text(
@@ -227,11 +219,10 @@ def update_pyproject(
     author: str,
     author_email: str,
     description: str,
-    minimum_python_version: str,
+    minimum_python_version: str | None,
     dry_run: bool,
 ) -> None:
     """Update package metadata in pyproject.toml."""
-    py_version = python_env_name(minimum_python_version)
     content = path.read_text(encoding="utf-8")
     updated = content
     updated = updated.replace(
@@ -259,24 +250,26 @@ def update_pyproject(
         f'known-first-party = ["{package_name}"]',
         1,
     )
-    updated = re.sub(
-        r'(?m)^requires-python = ">=\d+\.\d+,<4"$',
-        f'requires-python = ">={minimum_python_version},<4"',
-        updated,
-        count=1,
-    )
-    updated = re.sub(
-        r'(?m)^python-version = "\d+\.\d+(?:\.\d+)?"$',
-        f'python-version = "{minimum_python_version}.0"',
-        updated,
-        count=1,
-    )
-    updated = re.sub(
-        r'(?m)^target-version = "py\d{2,3}"$',
-        f'target-version = "{py_version}"',
-        updated,
-        count=1,
-    )
+    if minimum_python_version is not None:
+        py_version = python_env_name(minimum_python_version)
+        updated = re.sub(
+            r'(?m)^requires-python = ">=\d+\.\d+,<4"$',
+            f'requires-python = ">={minimum_python_version},<4"',
+            updated,
+            count=1,
+        )
+        updated = re.sub(
+            r'(?m)^python-version = "\d+\.\d+(?:\.\d+)?"$',
+            f'python-version = "{minimum_python_version}.0"',
+            updated,
+            count=1,
+        )
+        updated = re.sub(
+            r'(?m)^target-version = "py\d{2,3}"$',
+            f'target-version = "{py_version}"',
+            updated,
+            count=1,
+        )
 
     if updated == content:
         return
@@ -319,7 +312,7 @@ def update_ci_workflow(
     minimum_python_version: str,
     dry_run: bool,
 ) -> None:
-    """Update CI Python matrix and minimum-version-only jobs."""
+    """Update CI Python matrix from the minimum supported version."""
     if not path.exists():
         return
 
@@ -433,7 +426,7 @@ def main() -> int:
     repository_name = metadata["repository_name"]
     package_name = metadata["package_name"]
     project_title = metadata["project_title"]
-    minimum_python_version = metadata["minimum_python_version"]
+    minimum_python_version = metadata.get("minimum_python_version")
 
     if not repository_name:
         raise ValueError("repository_name must not be empty.")
@@ -482,21 +475,22 @@ def main() -> int:
         minimum_python_version=minimum_python_version,
         dry_run=args.dry_run,
     )
-    update_tox(
-        Path("tox.ini"),
-        minimum_python_version=minimum_python_version,
-        dry_run=args.dry_run,
-    )
-    update_ci_workflow(
-        Path(".github/workflows/ci.yaml"),
-        minimum_python_version=minimum_python_version,
-        dry_run=args.dry_run,
-    )
-    update_uv_lock(
-        Path("uv.lock"),
-        minimum_python_version=minimum_python_version,
-        dry_run=args.dry_run,
-    )
+    if minimum_python_version is not None:
+        update_tox(
+            Path("tox.ini"),
+            minimum_python_version=minimum_python_version,
+            dry_run=args.dry_run,
+        )
+        update_ci_workflow(
+            Path(".github/workflows/ci.yaml"),
+            minimum_python_version=minimum_python_version,
+            dry_run=args.dry_run,
+        )
+        update_uv_lock(
+            Path("uv.lock"),
+            minimum_python_version=minimum_python_version,
+            dry_run=args.dry_run,
+        )
     rename_package_dir(package_name, dry_run=args.dry_run)
     return 0
 
