@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import sys
 from pathlib import Path
 
 PLACEHOLDER_PACKAGE = "project_name"
@@ -13,7 +14,6 @@ PLACEHOLDER_REPOSITORY = "python-template"
 PLACEHOLDER_AUTHOR = "Mario Potato"
 PLACEHOLDER_AUTHOR_EMAIL = "mario.potato@univr.it"
 PLACEHOLDER_DESCRIPTION = "A simple template project."
-DEFAULT_MINIMUM_PYTHON_VERSION = "3.10"
 SUPPORTED_PYTHON_VERSIONS = ("3.10", "3.11", "3.12", "3.13", "3.14")
 
 PACKAGE_FILES = (
@@ -33,6 +33,11 @@ REPOSITORY_FILES = (
 )
 DOCS_INDEX = Path("docs/index.md")
 PACKAGE_DIR = Path(PLACEHOLDER_PACKAGE)
+
+
+def current_python_version() -> str:
+    """Return the major.minor version of the running Python interpreter."""
+    return f"{sys.version_info.major}.{sys.version_info.minor}"
 
 
 def parse_args() -> argparse.Namespace:
@@ -78,10 +83,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--minimum-python-version",
         "--min-python-version",
-        default=DEFAULT_MINIMUM_PYTHON_VERSION,
+        default=current_python_version(),
         help=(
             "Minimum supported Python version. Supported values: "
-            f"{', '.join(SUPPORTED_PYTHON_VERSIONS)}."
+            f"{', '.join(SUPPORTED_PYTHON_VERSIONS)}. Defaults to the "
+            "Python interpreter running this script."
         ),
     )
     parser.add_argument(

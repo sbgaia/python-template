@@ -7,7 +7,6 @@ on:
       minimum_python_version:
         description: Minimum Python version supported by the generated project.
         required: false
-        default: '3.10'
   push:
 
 permissions:
@@ -37,11 +36,14 @@ jobs:
         python-version: '3.13'
     - name: Bootstrap repository metadata
       if: steps.placeholders.outputs.needs_bootstrap == 'true'
-      run: >
-        python scripts/bootstrap_template.py --from-github
-        --minimum-python-version "$MINIMUM_PYTHON_VERSION"
+      run: |
+        args=(--from-github)
+        if [ -n "$MINIMUM_PYTHON_VERSION" ]; then
+          args+=(--minimum-python-version "$MINIMUM_PYTHON_VERSION")
+        fi
+        python scripts/bootstrap_template.py "${args[@]}"
       env:
-        MINIMUM_PYTHON_VERSION: ${{ inputs.minimum_python_version || '3.10' }}
+        MINIMUM_PYTHON_VERSION: ${{ inputs.minimum_python_version }}
         GITHUB_REPOSITORY: ${{ github.repository }}
         GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
         GITHUB_ACTOR: ${{ github.actor }}

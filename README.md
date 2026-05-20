@@ -7,13 +7,15 @@ This template contains the standard structure for a Python repository for the Gl
 After creating a new repository from this template, run:
 
 ```bash
-python scripts/bootstrap_template.py your-repository-name --minimum-python-version 3.10
+python scripts/bootstrap_template.py your-repository-name
 ```
 
 This renames the placeholder package directory, updates the package metadata,
 sets the minimum supported Python version, and rewrites the main `project_name`
-and `python-template` references across the repository. Use
-`--minimum-python-version` with one of `3.10`, `3.11`, `3.12`, or `3.13`.
+and `python-template` references across the repository. The minimum Python
+version defaults to the interpreter running the bootstrap script. Use
+`--minimum-python-version` to override it with one of `3.10`, `3.11`, `3.12`,
+`3.13`, or `3.14`.
 Use `--package-name`, `--project-title`, `--author`, `--author-email`, or
 `--description` if the defaults inferred from the repository name are not
 enough.

@@ -2,9 +2,35 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
+from scripts.bootstrap_template import (
+    current_python_version,
+    format_tox_env,
+    normalize_minimum_python_version,
+    parse_args,
+    resolve_metadata,
+    versions_from_minimum,
+)
+
 BOOTSTRAP_SCRIPT = (
     Path(__file__).resolve().parents[1] / "scripts" / ("bootstrap_template.py")
 )
+
+
+def test_bootstrap_template_defaults_python_version_to_interpreter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(sys, "argv", ["bootstrap_template.py"])
+
+    metadata = resolve_metadata(parse_args())
+
+    assert metadata["minimum_python_version"] == current_python_version()
+
+
+def test_bootstrap_template_rejects_unsupported_python_version() -> None:
+    with pytest.raises(ValueError, match="supported template versions"):
+        normalize_minimum_python_version("3.15")
 
 
 def test_bootstrap_template_renames_placeholders(tmp_path: Path) -> None:
@@ -236,6 +262,12 @@ def test_bootstrap_template_uses_github_metadata(tmp_path: Path) -> None:
 def test_bootstrap_template_updates_minimum_python_version(
     tmp_path: Path,
 ) -> None:
+    minimum_python_version = "3.12"
+    supported_versions = versions_from_minimum(minimum_python_version)
+    expected_ci_matrix = ", ".join(
+        f"'{version}'" for version in supported_versions
+    )
+
     repo_dir = tmp_path / "demo-service"
     repo_dir.mkdir()
     (repo_dir / ".github" / "workflows").mkdir(parents=True)
@@ -294,9 +326,7 @@ def test_bootstrap_template_updates_minimum_python_version(
         encoding="utf-8",
     )
     (repo_dir / "uv.lock").write_text(
-        "version = 1\n"
-        "revision = 1\n"
-        'requires-python = ">=3.10, <4"\n',
+        'version = 1\nrevision = 1\nrequires-python = ">=3.10, <4"\n',
         encoding="utf-8",
     )
 
@@ -306,7 +336,7 @@ def test_bootstrap_template_updates_minimum_python_version(
             str(BOOTSTRAP_SCRIPT),
             "demo-service",
             "--minimum-python-version",
-            "3.12",
+            minimum_python_version,
         ],
         cwd=repo_dir,
         check=True,
@@ -319,10 +349,10 @@ def test_bootstrap_template_updates_minimum_python_version(
     )
     uv_lock = (repo_dir / "uv.lock").read_text(encoding="utf-8")
 
-    assert 'requires-python = ">=3.12,<4"' in pyproject
-    assert 'python-version = "3.12.0"' in pyproject
+    assert f'requires-python = ">={minimum_python_version},<4"' in pyproject
+    assert f'python-version = "{minimum_python_version}.0"' in pyproject
     assert 'target-version = "py312"' in pyproject
-    assert "    py{312,313}" in tox
-    assert "python-version: ['3.12', '3.13']" in ci
-    assert "matrix.python-version == '3.12'" in ci
-    assert 'requires-python = ">=3.12, <4"' in uv_lock
+    assert f"    {format_tox_env(supported_versions)}" in tox
+    assert f"python-version: [{expected_ci_matrix}]" in ci
+    assert f"matrix.python-version == '{minimum_python_version}'" in ci
+    assert f'requires-python = ">={minimum_python_version}, <4"' in uv_lock
