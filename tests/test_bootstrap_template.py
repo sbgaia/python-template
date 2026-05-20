@@ -231,3 +231,98 @@ def test_bootstrap_template_uses_github_metadata(tmp_path: Path) -> None:
     assert "12345+octocat@users.noreply.github.com" in (
         repo_dir / "pyproject.toml"
     ).read_text(encoding="utf-8")
+
+
+def test_bootstrap_template_updates_minimum_python_version(
+    tmp_path: Path,
+) -> None:
+    repo_dir = tmp_path / "demo-service"
+    repo_dir.mkdir()
+    (repo_dir / ".github" / "workflows").mkdir(parents=True)
+    (repo_dir / "docs").mkdir()
+    (repo_dir / "project_name").mkdir()
+
+    (repo_dir / "README.md").write_text("# Python Template\n", encoding="utf-8")
+    (repo_dir / "docs" / "index.md").write_text(
+        "# project_name\n", encoding="utf-8"
+    )
+    (repo_dir / "docs" / "api.md").write_text(
+        "::: project_name\n", encoding="utf-8"
+    )
+    (repo_dir / "mkdocs.yml").write_text(
+        "site_name: project_name\nrepo_name: python-template\n",
+        encoding="utf-8",
+    )
+    (repo_dir / "pyproject.toml").write_text(
+        "[project]\n"
+        'name = "project_name"\n'
+        'description = "A simple template project."\n'
+        'authors = [{ name = "Mario Potato", '
+        'email = "mario.potato@univr.it" }]\n'
+        'requires-python = ">=3.10,<4"\n'
+        "\n"
+        "[tool.pyrefly]\n"
+        'python-version = "3.10.0"\n'
+        "\n"
+        "[tool.ruff]\n"
+        'target-version = "py310"\n'
+        "\n"
+        "[tool.ruff.lint.isort]\n"
+        'known-first-party = ["project_name"]\n',
+        encoding="utf-8",
+    )
+    (repo_dir / "tox.ini").write_text(
+        "[tox]\n"
+        "env_list =\n"
+        "    py{310,311,312,313}\n"
+        "\n"
+        "[testenv]\n"
+        "commands = python -m pytest\n",
+        encoding="utf-8",
+    )
+    (repo_dir / ".github" / "workflows" / "ci.yaml").write_text(
+        "jobs:\n"
+        "  test:\n"
+        "    strategy:\n"
+        "      matrix:\n"
+        "        python-version: ['3.10', '3.11', '3.12', '3.13']\n"
+        "    steps:\n"
+        "    - name: Run type checks\n"
+        "      if: matrix.python-version == '3.10'\n"
+        "    - name: Build documentation\n"
+        "      if: matrix.python-version == '3.10'\n",
+        encoding="utf-8",
+    )
+    (repo_dir / "uv.lock").write_text(
+        "version = 1\n"
+        "revision = 1\n"
+        'requires-python = ">=3.10, <4"\n',
+        encoding="utf-8",
+    )
+
+    subprocess.run(
+        [
+            sys.executable,
+            str(BOOTSTRAP_SCRIPT),
+            "demo-service",
+            "--minimum-python-version",
+            "3.12",
+        ],
+        cwd=repo_dir,
+        check=True,
+    )
+
+    pyproject = (repo_dir / "pyproject.toml").read_text(encoding="utf-8")
+    tox = (repo_dir / "tox.ini").read_text(encoding="utf-8")
+    ci = (repo_dir / ".github" / "workflows" / "ci.yaml").read_text(
+        encoding="utf-8"
+    )
+    uv_lock = (repo_dir / "uv.lock").read_text(encoding="utf-8")
+
+    assert 'requires-python = ">=3.12,<4"' in pyproject
+    assert 'python-version = "3.12.0"' in pyproject
+    assert 'target-version = "py312"' in pyproject
+    assert "    py{312,313}" in tox
+    assert "python-version: ['3.12', '3.13']" in ci
+    assert "matrix.python-version == '3.12'" in ci
+    assert 'requires-python = ">=3.12, <4"' in uv_lock

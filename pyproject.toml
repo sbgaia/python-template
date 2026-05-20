@@ -12,7 +12,6 @@ dev = [
     "radon>=6.0.1,<7",
     "lizard>=1.21.2,<2",
     "pre-commit>=4.5.1,<5",
-    "mypy>=1.19.1,<2",
     "ruff>=0.15.6,<0.16",
     "tox>=4.50.1,<5",
     "pytest>=8.4.2,<10",
@@ -20,11 +19,33 @@ dev = [
     "mkdocs>=1.6.1,<2",
     "mkdocs-material>=9.6.20,<10",
     "mkdocstrings[python]>=0.30.1,<1.1",
+    "pyrefly>=1.0.0",
 ]
 
 [build-system]
 requires = ["hatchling>=1.27,<2"]
 build-backend = "hatchling.build"
+
+[tool.pyrefly]
+python-version = "3.10.0"
+preset = "legacy"
+check-unannotated-defs = true
+infer-return-types = "never"
+
+[tool.pyrefly.errors]
+# Keep the policy close to the previous strict type-checking setup.
+implicit-any = "error"
+implicit-any-parameter = "error"
+invalid-decorator = "error"
+invalid-inheritance = "error"
+missing-import = "ignore"
+redundant-cast = "error"
+redundant-condition = "error"
+unannotated-return = "error"
+unnecessary-comparison = "error"
+unreachable = "error"
+unused-ignore = "error"
+untyped-import = "ignore"
 
 [tool.ruff]
 # Google style uses 80 chars
