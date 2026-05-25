@@ -10,9 +10,9 @@ license = "BSD-2-Clause"
 [project.optional-dependencies]
 dev = [
     "radon>=6.0.1,<7",
-    "lizard>=1.22.1,<2",
+    "lizard>=1.22.2,<2",
     "pre-commit>=4.6.0,<5",
-    "ruff>=0.15.13,<0.16",
+    "ruff>=0.15.14,<0.16",
     "tox>=4.54.0,<5",
     "pytest>=9.0.3,<10",
     "pytest-cov>=7.1.0,<8",
