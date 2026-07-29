@@ -45,10 +45,13 @@ Every task's requirements implicitly include this section.
 
 - [ ] **Step 1: Create the LICENSES directory**
 
-REUSE requires the license text under `LICENSES/`. The root `LICENSE` stays exactly where it is — GitHub's license detection reads it, and `reuse lint` ignores it.
+REUSE requires the license text under `LICENSES/`. A root `LICENSE` is also kept — GitHub's license detection reads it, and `reuse lint` ignores it.
+
+**Do not copy the existing root `LICENSE`.** It contains Unlicense text while `pyproject.toml` declares `license = "BSD-2-Clause"` — a pre-existing contradiction in this repository. The project owner ruled that **BSD-2-Clause is correct and the root `LICENSE` file was the mistake**. Write canonical BSD-2-Clause text, with the copyright line `Copyright (c) 2026 the Python Template contributors`, to *both* `LICENSE` and `LICENSES/BSD-2-Clause.txt` with identical content.
 
 ```bash
 mkdir -p LICENSES
+# write BSD-2-Clause text to LICENSE, then:
 cp LICENSE LICENSES/BSD-2-Clause.txt
 ```
 
@@ -253,7 +256,17 @@ Expected: PASS, 6 tests.
 
 - [ ] **Step 6: Create `REUSE.toml`**
 
-This covers every tracked non-Python file. `reuse lint` ignores the root `LICENSE`, `LICENSES/**`, `REUSE.toml` itself, and anything gitignored, so none of those are listed. `AGENTS.md`, `CLAUDE.md`, and `.claude/**` **are** listed: they are untracked but not gitignored, and `reuse lint` only skips VCS-ignored files. `docs/*.md` and `docs/superpowers/**` are used instead of `docs/**` so that `docs/conf.py` is covered by its inline header alone.
+This covers every tracked non-Python file. `reuse lint` ignores the root `LICENSE`, `LICENSES/**`, `REUSE.toml` itself, and anything gitignored, so none of those are listed. `AGENTS.md`, `CLAUDE.md`, and `.claude/**` **are** listed: they are untracked but not gitignored, and `reuse lint` only skips VCS-ignored files. `docs/*.md` is used instead of `docs/**` so that `docs/conf.py` is covered by its inline header alone.
+
+`docs/superpowers/**` needs a **second** `[[annotations]]` block with `precedence = "override"`. The spec and plan documents quote `SPDX-License-Identifier:` inside fenced code blocks, and `reuse` parses those quotes as real annotations, producing "invalid SPDX License Expression" errors. `override` tells reuse to use the `REUSE.toml` values and ignore anything found inside those files. Verified against reuse 6.2.0: it takes the error count from 3 to 0.
+
+```toml
+[[annotations]]
+path = ["docs/superpowers/**"]
+precedence = "override"
+SPDX-FileCopyrightText = "2026 the Python Template contributors"
+SPDX-License-Identifier = "BSD-2-Clause"
+```
 
 ```toml
 version = 1
