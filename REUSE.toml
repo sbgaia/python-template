@@ -19,11 +19,19 @@ path = [
     "README.md",
     "cliff.toml",
     "docs/*.md",
-    "docs/superpowers/**",
     "pyproject.toml",
     "tox.ini",
     "uv.lock",
 ]
 precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 the Python Template contributors"
+SPDX-License-Identifier = "BSD-2-Clause"
+
+# The plan and spec documents quote SPDX tags inside fenced code blocks.
+# `override` makes reuse use these values instead of parsing those quotes
+# as real annotations.
+[[annotations]]
+path = ["docs/superpowers/**"]
+precedence = "override"
 SPDX-FileCopyrightText = "2026 the Python Template contributors"
 SPDX-License-Identifier = "BSD-2-Clause"
