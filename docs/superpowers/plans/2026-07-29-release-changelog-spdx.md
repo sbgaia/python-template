@@ -490,6 +490,14 @@ commit_parsers = [
 printf '# Changelog\n\n' > CHANGELOG.md
 ```
 
+The `end-of-file-fixer` pre-commit hook will trim this to a single trailing newline (`# Changelog\n`), and that is fine and expected — **do not fight the hook.** The reason it is safe is behavioral, and was verified against git-cliff 2.13.1:
+
+- git-cliff recognises its configured header only when the file's `# Changelog` is followed by a blank line. Against the trimmed one-newline seed, `--prepend` does not match the header and instead emits a **duplicate** `# Changelog` at the bottom of the file.
+- That state is never reached, because `generate_changelog` in Task 3 uses `-o` (full regeneration, which emits the header itself) whenever there is no previous tag — i.e. for the first release. The result is `# Changelog\n\n## 0.1.0 …`, whose header *is* followed by a blank line.
+- Every subsequent release therefore prepends correctly, inserting the new section between the header and the previous release's section.
+
+Do not add a prose preamble under the heading to force the blank line: `--prepend` inserts immediately after the header, so the preamble would sink below the newest release section on the first prepend. Header plus version sections only.
+
 - [ ] **Step 4: Write `scripts/gen_changelog.py`**
 
 ```python
@@ -636,7 +644,7 @@ ______________________________________________________________________
 
 - Consumes: `cliff.toml` from Task 2, invoked as `git-cliff --config cliff.toml --tag <tag> <range> --prepend CHANGELOG.md`.
 
-- Produces: `scripts/release.py` exposing `validate_version(version: str) -> str`, `tag_exists(tag: str, *, runner: Runner = run) -> bool`, `working_tree_dirty(*, runner: Runner = run) -> bool`, `previous_tag(*, runner: Runner = run) -> str | None`, `bump_pyproject(path: Path, version: str) -> None`, `sync_lockfile(*, runner: Runner = run) -> None`, and `changelog_range(prev: str | None) -> list[str]`. The commit subject format `chore(release): vX.Y.Z`, which `cliff.toml` skips via `^chore\(release\)` and Task 4's workflow relies on.
+- Produces: `scripts/release.py` exposing `validate_version(version: str) -> str`, `tag_exists(tag: str, *, runner: Runner = run) -> bool`, `working_tree_dirty(*, runner: Runner = run) -> bool`, `previous_tag(*, runner: Runner = run) -> str | None`, `bump_pyproject(path: Path, version: str) -> None`, `sync_lockfile(*, runner: Runner = run) -> None`, `changelog_range(prev: str | None) -> list[str]`, and `generate_changelog(tag: str, prev: str | None, *, runner: Runner = run) -> None`. The commit subject format `chore(release): vX.Y.Z`, which `cliff.toml` skips via `^chore\(release\)` and Task 4's workflow relies on.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -650,6 +658,7 @@ import pytest
 from scripts.release import (
     bump_pyproject,
     changelog_range,
+    generate_changelog,
     previous_tag,
     sync_lockfile,
     tag_exists,
@@ -792,6 +801,28 @@ def test_changelog_range_is_empty_without_a_previous_tag():
 
 def test_changelog_range_spans_from_previous_tag_to_head():
     assert changelog_range("v0.1.0") == ["v0.1.0..HEAD"]
+
+
+def test_generate_changelog_regenerates_when_there_is_no_previous_tag():
+    runner = FakeRunner()
+
+    generate_changelog("v0.1.0", None, runner=runner)
+
+    command = runner.commands[0]
+    assert "-o" in command
+    assert "--prepend" not in command
+    assert command[command.index("-o") + 1] == "CHANGELOG.md"
+
+
+def test_generate_changelog_prepends_when_a_previous_tag_exists():
+    runner = FakeRunner()
+
+    generate_changelog("v0.1.0", "v0.0.9", runner=runner)
+
+    command = runner.commands[0]
+    assert "--prepend" in command
+    assert "-o" not in command
+    assert "v0.0.9..HEAD" in command
 ```
 
 - [ ] **Step 2: Run the tests to verify they fail**
@@ -1014,17 +1045,34 @@ def sync_lockfile(*, runner: Runner = run) -> None:
     runner(["uv", "lock", "--check"])
 
 
-def generate_changelog(tag: str, prev: str | None) -> None:
-    """Prepend the new release section to CHANGELOG.md.
+def generate_changelog(
+    tag: str,
+    prev: str | None,
+    *,
+    runner: Runner = run,
+) -> None:
+    """Write the new release section into CHANGELOG.md.
+
+    With no previous tag the file is regenerated with ``-o``, because
+    git-cliff refuses ``--prepend`` unless a range, ``-u``, or ``-l`` is
+    given, and because only a full render emits the ``# Changelog``
+    header. Once one release exists the file starts with that header
+    followed by a blank line, which git-cliff recognises, so later
+    releases are prepended above the previous section.
 
     Args:
         tag: The release tag, including the leading 'v'.
         prev: The previous release tag, if any.
+        runner: Command runner, injectable for tests.
     """
-    run(
+    script = str(REPO_ROOT / "scripts" / "gen_changelog.py")
+    if prev is None:
+        runner([sys.executable, script, "--tag", tag, "-o", "CHANGELOG.md"])
+        return
+    runner(
         [
             sys.executable,
-            str(REPO_ROOT / "scripts" / "gen_changelog.py"),
+            script,
             "--tag",
             tag,
             *changelog_range(prev),
@@ -1100,7 +1148,7 @@ if __name__ == "__main__":
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `uv run --extra dev pytest tests/test_release.py -v`
-Expected: PASS, 19 tests (the two parametrized cases contribute 4 and 5).
+Expected: PASS, 21 tests (the two parametrized cases contribute 4 and 5).
 
 - [ ] **Step 5: Add the tox env**
 
