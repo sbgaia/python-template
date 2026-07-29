@@ -18,6 +18,7 @@ Every task's requirements implicitly include this section.
 - Ruff `line-length = 80`, `target-version = "py310"`. Ruff lint selects `D` (pydocstyle, Google convention) — **every module, function, and class outside `tests/` needs a docstring**. `tests/**/*.py` has `D` ignored.
 - Ruff format uses `quote-style = "double"`.
 - New scripts go in `scripts/`, are Python (not shell), start with `#!/usr/bin/env python3`, use `from __future__ import annotations`, and end with `raise SystemExit(main())`. Follow the existing style of `scripts/validate_distribution.py` and `scripts/bootstrap_template.py`.
+- **Every new script in `scripts/` must be committed executable:** `chmod +x scripts/<name>.py` before `git add`. The `check-shebang-scripts-are-executable` pre-commit hook fails a shebang'd file that is not executable, and it reads the *git index* mode — so `git add --chmod=+x scripts/<name>.py` is the reliable form. All three existing `scripts/*.py` are mode `100755`. (`examples/say_hi.py` is `100644` because it has no shebang; do not add one.)
 - All new `.py` files must carry the SPDX header shown in Task 1 verbatim, placed after any shebang and before the module docstring.
 - `requires-python = ">=3.10,<4"`. `reuse` requires >=3.10, which matches.
 - CI invokes tox only as `tox run -e <env>`. **Do not add `changelog` or `release` to `env_list`** — bare `uv run tox` would otherwise fire a release attempt.
@@ -360,11 +361,15 @@ Expected: PASS.
 - [ ] **Step 11: Commit**
 
 ```bash
-git add LICENSES REUSE.toml scripts/add_spdx_headers.py \
-  tests/test_add_spdx_headers.py .pre-commit-config.yaml .gitignore \
+chmod +x scripts/add_spdx_headers.py
+git add --chmod=+x scripts/add_spdx_headers.py
+git add LICENSES REUSE.toml tests/test_add_spdx_headers.py \
+  .pre-commit-config.yaml .gitignore \
   project_name tests examples scripts docs/conf.py
 git commit -m "feat(license): auto-insert and verify SPDX headers"
 ```
+
+Before committing, confirm no unrelated file-mode changes are staged — `git diff --cached --summary` should show `mode change` only for files this task intentionally touched.
 
 ---
 
@@ -590,7 +595,9 @@ Run: `uv run --extra dev pre-commit run --all-files`
 Expected: PASS. `cliff.toml` and `CHANGELOG.md` are both covered by `REUSE.toml`, so `reuse` must stay green.
 
 ```bash
-git add cliff.toml CHANGELOG.md scripts/gen_changelog.py pyproject.toml \
+chmod +x scripts/gen_changelog.py
+git add --chmod=+x scripts/gen_changelog.py
+git add cliff.toml CHANGELOG.md pyproject.toml \
   uv.lock tox.ini README.md CONTRIBUTING.md
 git commit -m "feat(changelog): generate CHANGELOG.md with git-cliff"
 ```
@@ -1129,8 +1136,9 @@ Run: `uv run --extra dev pytest tests/ -q`
 Expected: PASS.
 
 ```bash
-git add scripts/release.py tests/test_release.py tox.ini \
-  README.md CONTRIBUTING.md
+chmod +x scripts/release.py
+git add --chmod=+x scripts/release.py
+git add tests/test_release.py tox.ini README.md CONTRIBUTING.md
 git commit -m "feat(release): add release preparation script"
 ```
 
