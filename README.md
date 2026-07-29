@@ -119,6 +119,17 @@ Preview the generated changelog:
 uv run tox -e changelog
 ```
 
+Prepare a release — bumps the version, regenerates the changelog, commits,
+and tags:
+
+```bash
+uv run tox -e release -- 0.1.0
+uv run tox -e release -- 0.1.0 --push
+```
+
+Pushing the tag triggers the `Release` workflow, which builds the
+distributions and publishes a GitHub Release.
+
 Build the documentation:
 
 ```bash
