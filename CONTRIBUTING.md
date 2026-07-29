@@ -56,6 +56,12 @@ Build and smoke-test the package artifacts:
 uv run tox -e build
 ```
 
+Preview the generated changelog:
+
+```bash
+uv run tox -e changelog
+```
+
 Build and smoke-test the Docker image:
 
 ```bash

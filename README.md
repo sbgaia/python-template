@@ -113,6 +113,12 @@ Build and smoke-test the package artifacts:
 uv run tox -e build
 ```
 
+Preview the generated changelog:
+
+```bash
+uv run tox -e changelog
+```
+
 Build the documentation:
 
 ```bash
@@ -164,6 +170,7 @@ pull requests.
 | `scripts/`      | Optional | Repository automation scripts, including the bootstrap script.            |
 | `tests/`        | Required | Pytest test suite. Mirror the package structure where practical.          |
 | `Dockerfile`    | Optional | Container build for running the project example.                          |
+| `cliff.toml`    | Optional | git-cliff changelog generation rules.                                     |
 | `tox.ini`       | Required | Local and CI task definitions.                                            |
 
 ## Included tools
@@ -177,4 +184,5 @@ pull requests.
 - [MyST Parser](https://myst-parser.readthedocs.io/) for Markdown in Sphinx
 - [Read the Docs](https://readthedocs.org/) for hosted documentation
 - [pip-audit](https://pypi.org/project/pip-audit/) for dependency vulnerability checks
+- [git-cliff](https://git-cliff.org/) for changelog generation
 - [GitHub Actions](https://docs.github.com/en/actions) for CI automation
