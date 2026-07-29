@@ -7,6 +7,15 @@
 #   - [shorthash] Subject
 #
 # Regenerate with `uv run tox run -e changelog -- -o CHANGELOG.md`.
+#
+# --prepend caveat: git-cliff only recognises the `# Changelog` header
+# above when it is followed by a blank line. CHANGELOG.md is committed as
+# a bare `# Changelog\n` (a pre-commit hook strips the blank line), so
+# `--prepend` against it does not match the header and duplicates
+# `# Changelog` at the bottom of the file instead of leaving it alone. Use
+# `-o` for a full regeneration, not `--prepend`, against the committed
+# file. `--prepend` also requires a commit range (or `-u`/`-l`), so the
+# first release must use `-o` regardless.
 
 [changelog]
 header = "# Changelog\n\n"
