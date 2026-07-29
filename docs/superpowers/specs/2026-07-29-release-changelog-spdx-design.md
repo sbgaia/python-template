@@ -9,8 +9,8 @@ Bring three capabilities from
 into this template:
 
 1. Tag-triggered GitHub Release publishing.
-2. `CHANGELOG.md` generation from git history via git-cliff.
-3. SPDX/REUSE licensing headers on source files.
+1. `CHANGELOG.md` generation from git history via git-cliff.
+1. SPDX/REUSE licensing headers on source files.
 
 Because this repository is a *template*, every added file must also survive
 `scripts/bootstrap_template.py` — placeholders substituted, copyright holder
@@ -18,15 +18,15 @@ rewritten — and be covered by the template smoke test.
 
 ## Decisions
 
-| Question | Decision | Rationale |
-| --- | --- | --- |
-| SPDX headers | Auto-insert, then verify | The reference only lints; writing headers automatically removes the manual step. |
-| Changelog format | Grouped by conventional-commit type | This repository's history is consistently conventional, unlike the reference's. |
-| Release scope | GitHub Release, with a commented PyPI stub | Works with no secrets in every generated repo; PyPI is opt-in. |
-| Copyright holder | `the <Project> contributors` | Avoids editing a per-author name into every file as contributors change. |
-| Entrypoints | Python scripts plus tox envs | Matches this repo's all-Python `scripts/` and tox-driven convention; unit-testable. |
-| Commit scope in bullets | Omitted | Keeps bullets short; scope is recoverable from the hash. |
-| Root `LICENSE` | Kept alongside `LICENSES/` | GitHub license detection reads the root file. |
+| Question                | Decision                                   | Rationale                                                                           |
+| ----------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------- |
+| SPDX headers            | Auto-insert, then verify                   | The reference only lints; writing headers automatically removes the manual step.    |
+| Changelog format        | Grouped by conventional-commit type        | This repository's history is consistently conventional, unlike the reference's.     |
+| Release scope           | GitHub Release, with a commented PyPI stub | Works with no secrets in every generated repo; PyPI is opt-in.                      |
+| Copyright holder        | `the <Project> contributors`               | Avoids editing a per-author name into every file as contributors change.            |
+| Entrypoints             | Python scripts plus tox envs               | Matches this repo's all-Python `scripts/` and tox-driven convention; unit-testable. |
+| Commit scope in bullets | Omitted                                    | Keeps bullets short; scope is recoverable from the hash.                            |
+| Root `LICENSE`          | Kept alongside `LICENSES/`                 | GitHub license detection reads the root file.                                       |
 
 ## Divergences from the reference
 
@@ -216,19 +216,19 @@ sort_commits = "oldest"
 
 Commit parsers, in order — skips first, then type mapping, then a catch-all:
 
-| Pattern | Group |
-| --- | --- |
-| `^chore\(release\)` | skipped |
-| `^Merge ` | skipped |
-| `^feat` | Features |
-| `^fix` | Bug Fixes |
-| `^perf` | Performance |
-| `^refactor` | Refactoring |
-| `^docs` | Documentation |
-| `^test` | Testing |
-| `^(build\|ci)` | Build & CI |
-| `^(chore\|style\|format)` | Chores |
-| `.*` | Other |
+| Pattern                   | Group         |
+| ------------------------- | ------------- |
+| `^chore\(release\)`       | skipped       |
+| `^Merge `                 | skipped       |
+| `^feat`                   | Features      |
+| `^fix`                    | Bug Fixes     |
+| `^perf`                   | Performance   |
+| `^refactor`               | Refactoring   |
+| `^docs`                   | Documentation |
+| `^test`                   | Testing       |
+| `^(build\|ci)`            | Build & CI    |
+| `^(chore\|style\|format)` | Chores        |
+| `.*`                      | Other         |
 
 Group names carry `<!-- N -->` numeric prefixes stripped by `striptags`. This
 is git-cliff's documented idiom for forcing group order; `group_by` otherwise
@@ -268,16 +268,16 @@ Same contract as the reference's `release.sh`, plus lockfile handling:
 
 1. Validate `X.Y.Z` against `^\d+\.\d+\.\d+([.-].+)?$`; abort if the tag
    already exists or the working tree is dirty.
-2. Resolve the previous reachable tag with
+1. Resolve the previous reachable tag with
    `git describe --tags --abbrev=0 --match='v[0-9]*' HEAD`. If none, the
    changelog covers all history and a warning is printed.
-3. Bump `version` in `pyproject.toml`.
-4. Run `uv lock`, then `uv lock --check` to confirm the lockfile is in sync.
-5. `git-cliff --config cliff.toml --tag vX.Y.Z <range> --prepend CHANGELOG.md`.
-6. Commit `pyproject.toml`, `uv.lock`, and `CHANGELOG.md` as
+1. Bump `version` in `pyproject.toml`.
+1. Run `uv lock`, then `uv lock --check` to confirm the lockfile is in sync.
+1. `git-cliff --config cliff.toml --tag vX.Y.Z <range> --prepend CHANGELOG.md`.
+1. Commit `pyproject.toml`, `uv.lock`, and `CHANGELOG.md` as
    `chore(release): vX.Y.Z`.
-7. Unless `--no-tag`, create annotated tag `vX.Y.Z`.
-8. With `--push`, `git push origin HEAD --follow-tags`.
+1. Unless `--no-tag`, create annotated tag `vX.Y.Z`.
+1. With `--push`, `git push origin HEAD --follow-tags`.
 
 `--dry-run` prints the planned steps and exits without touching the tree, and
 so does not require a clean tree.
@@ -307,15 +307,15 @@ rather than inlining uv setup, matching the other workflows.
 Steps:
 
 1. `actions/checkout@v6` with `fetch-depth: 0` — git-cliff needs full history.
-2. Verify the tag matches `pyproject.toml`'s version; fail with
+1. Verify the tag matches `pyproject.toml`'s version; fail with
    `::error::` if not.
-3. `uv run --locked --extra dev tox run -e build` — builds sdist and wheel and
+1. `uv run --locked --extra dev tox run -e build` — builds sdist and wheel and
    import-smoke-tests the wheel via `scripts/validate_distribution.py`.
-4. `git-cliff --config cliff.toml --current --strip header -o release-notes.md`;
+1. `git-cliff --config cliff.toml --current --strip header -o release-notes.md`;
    fail if the result is empty.
-5. `softprops/action-gh-release@v2` with `body_path: release-notes.md` and
+1. `softprops/action-gh-release@v2` with `body_path: release-notes.md` and
    `dist/*.whl`, `dist/*.tar.gz`.
-6. A commented-out `publish` job — `needs: release`,
+1. A commented-out `publish` job — `needs: release`,
    `environment: pypi`, `permissions: id-token: write`,
    `pypa/gh-action-pypi-publish@release/v1` — with a comment explaining that
    enabling it requires configuring a PyPI Trusted Publisher.

@@ -26,11 +26,12 @@ Every task's requirements implicitly include this section.
 - Work on branch `feat/release-changelog-spdx`, which already exists and holds the spec.
 - pre-commit is **not** installed as a git hook in this clone. Hooks do not run automatically on commit; run them explicitly with `uv run --extra dev pre-commit run --all-files` when a task says to.
 
----
+______________________________________________________________________
 
 ### Task 1: SPDX / REUSE layer
 
 **Files:**
+
 - Create: `LICENSES/BSD-2-Clause.txt`
 - Create: `REUSE.toml`
 - Create: `scripts/add_spdx_headers.py`
@@ -40,7 +41,9 @@ Every task's requirements implicitly include this section.
 - Modify: all 12 non-empty tracked `.py` files (headers inserted by the tool, not by hand)
 
 **Interfaces:**
+
 - Consumes: nothing.
+
 - Produces: `scripts/add_spdx_headers.py` exposing `annotatable(paths: list[str]) -> list[str]` and `build_command(paths: list[str], *, year: str, copyright_holder: str, license_id: str) -> list[str]`. `REUSE.toml` containing the literal string `the Python Template contributors` (Task 5 rewrites it). The header format Task 5's tests assert against.
 
 - [ ] **Step 1: Create the LICENSES directory**
@@ -384,11 +387,12 @@ git commit -m "feat(license): auto-insert and verify SPDX headers"
 
 Before committing, confirm no unrelated file-mode changes are staged — `git diff --cached --summary` should show `mode change` only for files this task intentionally touched.
 
----
+______________________________________________________________________
 
 ### Task 2: Changelog layer
 
 **Files:**
+
 - Create: `cliff.toml`
 - Create: `scripts/gen_changelog.py`
 - Modify: `CHANGELOG.md` (seed; currently 0 bytes)
@@ -398,7 +402,9 @@ Before committing, confirm no unrelated file-mode changes are staged — `git di
 - Modify: `README.md`, `CONTRIBUTING.md` (document the env)
 
 **Interfaces:**
+
 - Consumes: the SPDX header format from Task 1.
+
 - Produces: `cliff.toml` at the repo root, consumed by Task 3's `release.py` and Task 4's workflow via `--config cliff.toml`. `scripts/gen_changelog.py` passing `sys.argv[1:]` through to `git-cliff`.
 
 - [ ] **Step 1: Add `git-cliff` to the dev extra**
@@ -615,18 +621,21 @@ git add cliff.toml CHANGELOG.md pyproject.toml \
 git commit -m "feat(changelog): generate CHANGELOG.md with git-cliff"
 ```
 
----
+______________________________________________________________________
 
 ### Task 3: Release script
 
 **Files:**
+
 - Create: `scripts/release.py`
 - Test: `tests/test_release.py`
 - Modify: `tox.ini` (add `[testenv:release]`, **not** to `env_list`)
 - Modify: `README.md`, `CONTRIBUTING.md`
 
 **Interfaces:**
+
 - Consumes: `cliff.toml` from Task 2, invoked as `git-cliff --config cliff.toml --tag <tag> <range> --prepend CHANGELOG.md`.
+
 - Produces: `scripts/release.py` exposing `validate_version(version: str) -> str`, `tag_exists(tag: str, *, runner: Runner = run) -> bool`, `working_tree_dirty(*, runner: Runner = run) -> bool`, `previous_tag(*, runner: Runner = run) -> str | None`, `bump_pyproject(path: Path, version: str) -> None`, `sync_lockfile(*, runner: Runner = run) -> None`, and `changelog_range(prev: str | None) -> list[str]`. The commit subject format `chore(release): vX.Y.Z`, which `cliff.toml` skips via `^chore\(release\)` and Task 4's workflow relies on.
 
 - [ ] **Step 1: Write the failing tests**
@@ -1155,11 +1164,12 @@ git add tests/test_release.py tox.ini README.md CONTRIBUTING.md
 git commit -m "feat(release): add release preparation script"
 ```
 
----
+______________________________________________________________________
 
 ### Task 4: Release workflow
 
 **Files:**
+
 - Create: `.github/workflows/release.yaml`
 
 `README.md` needs no change here: it documents tox envs and the repository
@@ -1167,7 +1177,9 @@ layout, but has no per-workflow list to extend. The release *command* is
 documented in Task 3, Step 7.
 
 **Interfaces:**
+
 - Consumes: `cliff.toml` (Task 2), the `chore(release): vX.Y.Z` commit and `vX.Y.Z` tag convention (Task 3), the existing `./.github/actions/setup-python-uv` composite action, and the existing `[testenv:build]` env which runs `scripts/validate_distribution.py`.
+
 - Produces: `.github/workflows/release.yaml`, which Task 5 adds to `WORKFLOW_FILES`.
 
 - [ ] **Step 1: Create the workflow**
@@ -1295,16 +1307,19 @@ git add .github/workflows/release.yaml
 git commit -m "ci(release): publish GitHub Releases from version tags"
 ```
 
----
+______________________________________________________________________
 
 ### Task 5: Template bootstrap integration
 
 **Files:**
+
 - Modify: `scripts/bootstrap_template.py` (placeholder constants, `WORKFLOW_FILES`, `PACKAGE_FILES`, new `update_spdx_copyright`, `main`)
 - Test: `tests/test_bootstrap_template.py` (extend)
 
 **Interfaces:**
+
 - Consumes: `REUSE.toml` and the header format (Task 1), `cliff.toml` and `scripts/gen_changelog.py` (Task 2), `scripts/release.py` (Task 3), `.github/workflows/release.yaml` (Task 4).
+
 - Produces: `PLACEHOLDER_COPYRIGHT` and `update_spdx_copyright(paths, *, project_title, dry_run)`, relied on by Task 6's smoke assertions.
 
 - [ ] **Step 1: Write the failing tests**
@@ -1525,14 +1540,16 @@ git add scripts/bootstrap_template.py tests/test_bootstrap_template.py
 git commit -m "feat(bootstrap): substitute SPDX and release metadata"
 ```
 
----
+______________________________________________________________________
 
 ### Task 6: Template smoke test coverage
 
 **Files:**
+
 - Modify: `tests/test_template_smoke.py:22-42` (`PLACEHOLDER_CHECK_PATHS`) and `tests/test_template_smoke.py:70-121` (the single smoke test)
 
 **Interfaces:**
+
 - Consumes: everything from Tasks 1-5, exercised through the real `bootstrap_template.py` run the smoke test already performs.
 - Produces: nothing consumed downstream.
 
@@ -1596,14 +1613,16 @@ git add tests/test_template_smoke.py
 git commit -m "test(template): assert release and SPDX bootstrap substitution"
 ```
 
----
+______________________________________________________________________
 
 ### Task 7: Full verification
 
 **Files:** none modified unless a check fails.
 
 **Interfaces:**
+
 - Consumes: Tasks 1-6.
+
 - Produces: nothing.
 
 - [ ] **Step 1: Run every quality gate CI runs**
