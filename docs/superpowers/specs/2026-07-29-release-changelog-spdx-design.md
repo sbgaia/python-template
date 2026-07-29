@@ -155,9 +155,26 @@ tool caches that belong in `.gitignore` regardless (`.mypy_cache` is a leftover
 from before the pyrefly migration in `0383620`). Adding both entries is part of
 this work — it is required for the hook to pass, not unrelated cleanup.
 
-To verify during implementation: whether `reuse lint` ignores the root
-`LICENSE` once `LICENSES/BSD-2-Clause.txt` exists. If it does not, add a
-`REUSE.toml` entry for it.
+Verified against `reuse` 6.2.0 in a scratch repository: `reuse lint` ignores
+the root `LICENSE`, the `LICENSES/` directory, `REUSE.toml` itself, and
+zero-byte files. The root `LICENSE` therefore needs **no** `REUSE.toml` entry,
+and the zero-byte skip above is confirmed behavior rather than an assumption.
+
+`reuse annotate` writes this exact three-line form, preserving any shebang
+above it:
+
+```python
+#!/usr/bin/env python3
+
+# SPDX-FileCopyrightText: 2026 the Python Template contributors
+#
+# SPDX-License-Identifier: BSD-2-Clause
+```
+
+Note the `#` separator line. The reference repository uses a compact two-line
+header, which an older `reuse` produced. This design keeps the tool's native
+output rather than post-processing it, so headers stay byte-identical to what
+`reuse annotate` regenerates. The difference is cosmetic.
 
 ## 2. Changelog layer
 
@@ -269,7 +286,12 @@ so does not require a clean tree.
 
 `[testenv:changelog]` and `[testenv:release]`, both with
 `runner = uv-venv-lock-runner`, `extras = dev`, and
-`allowlist_externals = git, uv`. Appended to the tail of `env_list`.
+`allowlist_externals = git, uv`.
+
+Both are deliberately kept **out of** `env_list`. Every CI workflow invokes
+tox as `tox run -e <env>`, but a developer running bare `uv run tox` locally
+executes everything in `env_list` — which would fire a release attempt. Envs
+outside `env_list` remain runnable via `tox run -e release`.
 
 ```
 uv run tox run -e changelog
