@@ -58,6 +58,21 @@ repos:
   - id: ruff-format
     files: ^((project_name|tests|examples)/.+)?[^/]+\.(py|pyi)$
 
+  # SPDX headers: insert missing ones, then verify REUSE compliance
+- repo: local
+  hooks:
+  - id: reuse-annotate
+    name: add SPDX headers
+    entry: python scripts/add_spdx_headers.py
+    language: python
+    additional_dependencies: ['reuse>=6.2,<7']
+    types: [python]
+
+- repo: https://github.com/fsfe/reuse-tool
+  rev: v6.2.0
+  hooks:
+  - id: reuse
+
 
 # Global file exclusions
 exclude: |
