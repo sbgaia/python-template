@@ -113,23 +113,6 @@ Build and smoke-test the package artifacts:
 uv run tox -e build
 ```
 
-Preview the generated changelog:
-
-```bash
-uv run tox -e changelog
-```
-
-Prepare a release — bumps the version, regenerates the changelog, commits,
-and tags:
-
-```bash
-uv run tox -e release -- 0.1.0
-uv run tox -e release -- 0.1.0 --push
-```
-
-Pushing the tag triggers the `Release` workflow, which builds the
-distributions and publishes a GitHub Release.
-
 Build the documentation:
 
 ```bash
@@ -145,6 +128,150 @@ docker run --rm python-template:ci uv run python -c "import project_name"
 
 See `CONTRIBUTING.md` for the full local verification workflow and the
 generated-project smoke test.
+
+## Commit, license, and release workflow
+
+Three pieces of automation depend on each other, in this order: commit
+messages feed the changelog, license headers are added while you commit, and
+the release command turns both into a tagged GitHub Release.
+
+### 1. Commit
+
+Install the git hooks once per clone. Without this, the hooks only run when you
+invoke them by hand:
+
+```bash
+uv run pre-commit install
+```
+
+From then on every `git commit` formats and lints the staged files, inserts
+missing license headers, and verifies REUSE compliance. Run the same hooks
+across the whole repository at any time:
+
+```bash
+uv run pre-commit run --all-files
+```
+
+If a hook rewrites a file, the commit is aborted with the fix already applied
+to your working tree — stage it and commit again:
+
+```bash
+git add -A
+git commit -m "feat(greeter): add localized greetings"
+```
+
+**Commit messages must follow the Conventional Commits format**, because
+`cliff.toml` derives the changelog from the message prefix. Use
+`type: subject` or `type(scope): subject`:
+
+| Prefix                        | Changelog section |
+| ----------------------------- | ----------------- |
+| `feat:`                       | Features          |
+| `fix:`                        | Bug Fixes         |
+| `perf:`                       | Performance       |
+| `refactor:`                   | Refactoring       |
+| `docs:`                       | Documentation     |
+| `test:`                       | Testing           |
+| `build:`, `ci:`               | Build & CI        |
+| `chore:`, `style:`, `format:` | Chores            |
+| anything else                 | Other             |
+
+Only the subject after the prefix reaches the changelog, so write the subject
+as a standalone sentence. Merge commits and `chore(release):` commits are
+skipped, which keeps release commits out of their own changelog.
+
+### 2. License headers
+
+Headers are appended automatically — you do not normally run anything. The
+`add SPDX headers` hook calls `scripts/add_spdx_headers.py` on every staged
+Python file, which shells out to `reuse annotate` and writes:
+
+```python
+# SPDX-FileCopyrightText: 2026 the Python Template contributors
+#
+# SPDX-License-Identifier: BSD-2-Clause
+```
+
+Existing headers are left alone, and zero-byte files (such as empty
+`__init__.py`) are skipped. The `reuse lint` hook then fails the commit if any
+file still lacks copyright or license information.
+
+To annotate or check files outside a commit, drive the hooks directly:
+
+```bash
+uv run pre-commit run reuse-annotate --files project_name/greeter.py
+uv run pre-commit run reuse --all-files
+```
+
+`reuse` itself is installed only inside that hook's environment, not as a
+project dependency, so calling the script directly needs the tool supplied.
+Do that when you need a different year or copyright holder than the defaults:
+
+```bash
+uv run --with 'reuse>=6.2,<7' python scripts/add_spdx_headers.py \
+  --year 2027 --copyright "Your Name" project_name/greeter.py
+```
+
+Non-Python files are covered in bulk by `REUSE.toml` instead of an in-file
+header, which is why config files, workflows, and Markdown carry no comment
+block. Add new paths to the `path` list there rather than editing those files.
+The license text itself lives in `LICENSES/BSD-2-Clause.txt`; REUSE requires
+every identifier used anywhere in the repository to have a matching file in
+that directory. When test fixtures or docs need to quote an SPDX tag as data,
+wrap the region in `REUSE-IgnoreStart` / `REUSE-IgnoreEnd` comments so it is
+not mistaken for a real annotation.
+
+### 3. Release and changelog
+
+Preview what the changelog would contain, without writing anything:
+
+```bash
+uv run tox -e changelog                     # unreleased commits
+uv run tox -e changelog -- --tag v0.1.0     # as it would look tagged v0.1.0
+uv run tox -e changelog -- -o CHANGELOG.md  # regenerate the file in place
+```
+
+`CHANGELOG.md` is generated, never hand-edited. Fix a wrong entry by amending
+the commit message it came from and regenerating.
+
+Then cut the release. Start with a dry run, which prints the planned steps and
+touches nothing:
+
+```bash
+uv run tox -e release -- 0.1.0 --dry-run
+```
+
+When it looks right, run it for real from a clean working tree:
+
+```bash
+uv run tox -e release -- 0.1.0          # bump, changelog, commit, tag
+uv run tox -e release -- 0.1.0 --push   # ...and push the branch and tag
+```
+
+The release command refuses to run if the version is not `X.Y.Z`, if the tag
+already exists, or if the working tree has uncommitted changes. Otherwise it:
+
+1. bumps `version` in `pyproject.toml`
+1. runs `uv lock` and `uv lock --check`, so the lockfile matches the new
+   version and CI's `--locked` installs keep working
+1. writes the new section into `CHANGELOG.md` — a full render for the first
+   release, prepended above the previous section afterwards
+1. commits the three files as `chore(release): v0.1.0`
+1. creates the annotated tag `v0.1.0`
+
+Add `--no-tag` to produce the commit without a tag. Nothing is pushed unless
+you pass `--push`; otherwise push when ready:
+
+```bash
+git push origin HEAD --follow-tags
+```
+
+Pushing a `v*` tag triggers the `Release` workflow, which verifies the tag
+matches the `pyproject.toml` version, builds and smoke-tests the
+distributions with `tox -e build`, extracts that version's changelog section
+as the release notes, and publishes a GitHub Release with the wheel and sdist
+attached. Publishing to PyPI is opt-in — see the commented `publish` job in
+`.github/workflows/release.yaml` for the Trusted Publisher setup.
 
 ## Documentation
 
@@ -175,12 +302,14 @@ pull requests.
 | Path            | Status   | Purpose                                                                   |
 | --------------- | -------- | ------------------------------------------------------------------------- |
 | `.github/`      | Optional | GitHub Actions, Dependabot, and repository guidance.                      |
+| `LICENSES/`     | Required | Full text of every SPDX license used, as REUSE requires.                  |
 | `docs/`         | Required | Sphinx documentation, including manual pages and generated API reference. |
 | `examples/`     | Optional | Runnable examples for users and contributors.                             |
 | `project_name/` | Required | Source package. The bootstrap script renames this directory.              |
 | `scripts/`      | Optional | Repository automation scripts, including the bootstrap script.            |
 | `tests/`        | Required | Pytest test suite. Mirror the package structure where practical.          |
 | `Dockerfile`    | Optional | Container build for running the project example.                          |
+| `REUSE.toml`    | Optional | Bulk SPDX annotations for files that carry no in-file header.             |
 | `cliff.toml`    | Optional | git-cliff changelog generation rules.                                     |
 | `tox.ini`       | Required | Local and CI task definitions.                                            |
 
@@ -196,4 +325,6 @@ pull requests.
 - [Read the Docs](https://readthedocs.org/) for hosted documentation
 - [pip-audit](https://pypi.org/project/pip-audit/) for dependency vulnerability checks
 - [git-cliff](https://git-cliff.org/) for changelog generation
+- [REUSE](https://reuse.software/) for SPDX license headers and compliance
+- [pre-commit](https://pre-commit.com/) for the commit-time hook suite
 - [GitHub Actions](https://docs.github.com/en/actions) for CI automation

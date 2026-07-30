@@ -128,6 +128,18 @@ A good pull request should include:
 
 ## Release notes
 
-Update `CHANGELOG.md` for changes that affect generated projects, supported
-Python versions, dependency management, CI behavior, documentation publishing,
-or the public template workflow.
+`CHANGELOG.md` is generated from commit messages by git-cliff — do not edit it
+by hand. What lands in it is decided by the Conventional Commits prefix on each
+commit, so write commit subjects that read as release notes on their own,
+especially for changes that affect generated projects, supported Python
+versions, dependency management, CI behavior, documentation publishing, or the
+public template workflow.
+
+Preview the result before opening a pull request:
+
+```bash
+uv run tox -e changelog
+```
+
+The prefix-to-section mapping and the full release procedure are documented in
+the "Commit, license, and release workflow" section of `README.md`.
