@@ -245,6 +245,22 @@ def generate_changelog(
     )
 
 
+def run_hooks(files: list[str], *, runner: Runner = run) -> None:
+    """Run the pre-commit hooks over the release files.
+
+    The first pass may rewrite files (formatters, end-of-file-fixer), which
+    pre-commit reports as a non-zero exit even though nothing is wrong, so
+    its status is ignored. The second pass must come back clean.
+
+    Args:
+        files: Paths to check, passed to ``pre-commit run --files``.
+        runner: Command runner, injectable for tests.
+    """
+    command = ["uv", "run", "pre-commit", "run", "--files", *files]
+    runner(command, check=False)
+    runner(command)
+
+
 def main() -> int:
     """Run the release preparation process."""
     args = parse_args()
@@ -297,8 +313,7 @@ def main() -> int:
     # Run pre-commit hooks on the modified files before committing, to ensure
     # that the commit passes all checks.
     updated_files = ["pyproject.toml", "uv.lock", "CHANGELOG.md"]
-    run(["uv", "run", "pre-commit", "run", "--files", *updated_files])
-    run(["uv", "run", "pre-commit", "run", "--files", *updated_files])
+    run_hooks(updated_files)
 
     # Commit the changes and create an annotated tag for the release.
     run(["git", "add", *updated_files])

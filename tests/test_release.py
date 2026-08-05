@@ -17,6 +17,7 @@ from scripts.release import (
     generate_changelog,
     main,
     previous_tag,
+    run_hooks,
     sync_lockfile,
     tag_exists,
     validate_version,
@@ -38,6 +39,7 @@ class FakeRunner:
         results: dict[str, subprocess.CompletedProcess[str]] | None = None,
     ) -> None:
         self.commands: list[list[str]] = []
+        self.checks: list[bool] = []
         self.results = results or {}
 
     def __call__(
@@ -48,6 +50,7 @@ class FakeRunner:
         capture: bool = False,
     ) -> subprocess.CompletedProcess[str]:
         self.commands.append(command)
+        self.checks.append(check)
         key = " ".join(command)
         result = self.results.get(key)
         if result is None:
@@ -197,6 +200,24 @@ def test_sync_lockfile_locks_then_verifies() -> None:
     sync_lockfile(runner=runner)
 
     assert runner.commands == [["uv", "lock"], ["uv", "lock", "--check"]]
+
+
+def test_run_hooks_checks_the_given_files_twice() -> None:
+    runner = FakeRunner()
+
+    run_hooks(["CHANGELOG.md"], runner=runner)
+
+    expected = ["uv", "run", "pre-commit", "run", "--files", "CHANGELOG.md"]
+    assert runner.commands == [expected, expected]
+
+
+def test_run_hooks_tolerates_files_rewritten_by_the_first_pass() -> None:
+    """A hook that fixes a file exits non-zero; only the retry must pass."""
+    runner = FakeRunner()
+
+    run_hooks(["CHANGELOG.md"], runner=runner)
+
+    assert runner.checks == [False, True]
 
 
 def test_changelog_range_is_empty_without_a_previous_tag() -> None:
