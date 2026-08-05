@@ -46,6 +46,18 @@ repos:
   # read the value as a string instead of the integer 21600.
   - id: pretty-format-yaml
     args: [--autofix, --indent, '2', --preserve-quotes]
+
+  # Runs after the formatter, because a bare HH:MM is a string to every
+  # Python YAML parser: check-yaml and JSON Schema validation both accept
+  # the value Dependabot rejects, so it needs a dedicated check.
+- repo: local
+  hooks:
+  - id: check-yaml-sexagesimal
+    name: check for unquoted YAML clock values
+    entry: python scripts/check_yaml_sexagesimal.py
+    language: python
+    types: [yaml]
+
   # Check for common spelling mistakes
 - repo: https://github.com/codespell-project/codespell
   rev: v2.4.2
