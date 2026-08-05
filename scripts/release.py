@@ -294,7 +294,14 @@ def main() -> int:
     sync_lockfile()
     generate_changelog(tag, prev)
 
-    run(["git", "add", "pyproject.toml", "uv.lock", "CHANGELOG.md"])
+    # Run pre-commit hooks on the modified files before committing, to ensure
+    # that the commit passes all checks.
+    updated_files = ["pyproject.toml", "uv.lock", "CHANGELOG.md"]
+    run(["pre-commit", "run", "--files", *updated_files])
+    run(["pre-commit", "run", "--files", *updated_files])
+
+    # Commit the changes and create an annotated tag for the release.
+    run(["git", "add", *updated_files])
     run(["git", "commit", "-m", f"chore(release): {tag}"])
 
     if not args.no_tag:
