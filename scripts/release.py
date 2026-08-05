@@ -297,8 +297,8 @@ def main() -> int:
     # Run pre-commit hooks on the modified files before committing, to ensure
     # that the commit passes all checks.
     updated_files = ["pyproject.toml", "uv.lock", "CHANGELOG.md"]
-    run(["pre-commit", "run", "--files", *updated_files])
-    run(["pre-commit", "run", "--files", *updated_files])
+    run(["uv", "run", "pre-commit", "run", "--files", *updated_files])
+    run(["uv", "run", "pre-commit", "run", "--files", *updated_files])
 
     # Commit the changes and create an annotated tag for the release.
     run(["git", "add", *updated_files])
