@@ -24,7 +24,7 @@ jobs:
     timeout-minutes: 15
     if: github.actor != 'github-actions[bot]'
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 0
     - uses: ./.github/actions/setup-python-uv
