@@ -40,8 +40,24 @@ repos:
 - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
   rev: v2.16.0
   hooks:
+  # --preserve-quotes matters: ruamel follows YAML 1.2, where a bare 06:00
+  # is a string, so without it the formatter strips "redundant" quotes that
+  # YAML 1.1 parsers (Ruby's Psych, used by Dependabot) need in order to
+  # read the value as a string instead of the integer 21600.
   - id: pretty-format-yaml
-    args: [--autofix, --indent, '2']
+    args: [--autofix, --indent, '2', --preserve-quotes]
+
+  # Runs after the formatter, because a bare HH:MM is a string to every
+  # Python YAML parser: check-yaml and JSON Schema validation both accept
+  # the value Dependabot rejects, so it needs a dedicated check.
+- repo: local
+  hooks:
+  - id: check-yaml-sexagesimal
+    name: check for unquoted YAML clock values
+    entry: python scripts/check_yaml_sexagesimal.py
+    language: python
+    types: [yaml]
+
   # Check for common spelling mistakes
 - repo: https://github.com/codespell-project/codespell
   rev: v2.4.2
@@ -57,6 +73,21 @@ repos:
     - --fix
   - id: ruff-format
     files: ^((project_name|tests|examples)/.+)?[^/]+\.(py|pyi)$
+
+  # SPDX headers: insert missing ones, then verify REUSE compliance
+- repo: local
+  hooks:
+  - id: reuse-annotate
+    name: add SPDX headers
+    entry: python scripts/add_spdx_headers.py
+    language: python
+    additional_dependencies: ['reuse>=6.2,<7']
+    types: [python]
+
+- repo: https://github.com/fsfe/reuse-tool
+  rev: v6.2.0
+  hooks:
+  - id: reuse
 
 
 # Global file exclusions

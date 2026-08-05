@@ -1,0 +1,37 @@
+version = 1
+
+[[annotations]]
+path = [
+    ".claude/**",
+    ".devcontainer/**",
+    ".env",
+    ".github/**",
+    ".gitignore",
+    ".pre-commit-config.yaml",
+    ".pylintrc",
+    ".readthedocs.yaml",
+    "AGENTS.md",
+    "CHANGELOG.md",
+    "CLAUDE.md",
+    "CONTRIBUTING.md",
+    "Dockerfile",
+    "LICENSES/**",
+    "README.md",
+    "cliff.toml",
+    "docs/*.md",
+    "pyproject.toml",
+    "tox.ini",
+    "uv.lock",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 the Python Template contributors"
+SPDX-License-Identifier = "BSD-2-Clause"
+
+# The plan and spec documents quote SPDX tags inside fenced code blocks.
+# `override` makes reuse use these values instead of parsing those quotes
+# as real annotations.
+[[annotations]]
+path = ["docs/superpowers/**"]
+precedence = "override"
+SPDX-FileCopyrightText = "2026 the Python Template contributors"
+SPDX-License-Identifier = "BSD-2-Clause"

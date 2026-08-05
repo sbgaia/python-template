@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+
+# SPDX-FileCopyrightText: 2026 the Python Template contributors
+#
+# SPDX-License-Identifier: BSD-2-Clause
+
 """Bootstrap a repository created from this template."""
 
 from __future__ import annotations
@@ -13,6 +18,7 @@ PLACEHOLDER_REPOSITORY = "python-template"
 PLACEHOLDER_AUTHOR = "Mario Potato"
 PLACEHOLDER_AUTHOR_EMAIL = "mario.potato@univr.it"
 PLACEHOLDER_DESCRIPTION = "A simple template project."
+PLACEHOLDER_COPYRIGHT = "the Python Template contributors"
 SUPPORTED_PYTHON_VERSIONS = ("3.10", "3.11", "3.12", "3.13", "3.14")
 
 WORKFLOW_FILES = (
@@ -21,6 +27,7 @@ WORKFLOW_FILES = (
     Path(".github/workflows/documentation.yaml"),
     Path(".github/workflows/package.yaml"),
     Path(".github/workflows/quality.yaml"),
+    Path(".github/workflows/release.yaml"),
     Path(".github/workflows/security.yaml"),
     Path(".github/workflows/template-smoke.yaml"),
     Path(".github/workflows/tests.yaml"),
@@ -54,6 +61,27 @@ REPOSITORY_FILES = (
     Path(".devcontainer/devcontainer.json"),
     Path("README.md"),
     *WORKFLOW_FILES,
+)
+# Files carrying the placeholder SPDX copyright holder. The package's own
+# modules are added at call time, because the package directory is renamed.
+SPDX_FILES = (
+    Path("REUSE.toml"),
+    Path("docs/conf.py"),
+    Path("examples/say_hi.py"),
+    Path("scripts/add_spdx_headers.py"),
+    Path("scripts/bootstrap_template.py"),
+    Path("scripts/check_yaml_sexagesimal.py"),
+    Path("scripts/gen_changelog.py"),
+    Path("scripts/release.py"),
+    Path("scripts/update_coverage_readme.py"),
+    Path("scripts/validate_distribution.py"),
+    Path("tests/test_add_spdx_headers.py"),
+    Path("tests/test_bootstrap_template.py"),
+    Path("tests/test_check_yaml_sexagesimal.py"),
+    Path("tests/test_gen_changelog.py"),
+    Path("tests/test_greeter.py"),
+    Path("tests/test_release.py"),
+    Path("tests/test_template_smoke.py"),
 )
 DOCS_INDEX = Path("docs/index.md")
 DOCS_CONF = Path("docs/conf.py")
@@ -512,6 +540,28 @@ def update_readme(
         path.write_text(updated, encoding="utf-8")
 
 
+def update_spdx_copyright(
+    paths: list[Path],
+    *,
+    project_title: str,
+    dry_run: bool,
+) -> None:
+    """Rewrite the SPDX copyright holder in the given files.
+
+    Args:
+        paths: Files that may contain the placeholder copyright holder.
+        project_title: Human-readable project title.
+        dry_run: Print planned changes without writing them.
+    """
+    holder = f"the {project_title} contributors"
+    for path in paths:
+        replace_text(
+            path,
+            {PLACEHOLDER_COPYRIGHT: holder},
+            dry_run=dry_run,
+        )
+
+
 def rename_package_dir(package_name: str, *, dry_run: bool) -> None:
     """Rename the placeholder package directory."""
     target_dir = Path(package_name)
@@ -608,6 +658,14 @@ def main() -> int:
                 minimum_python_version=minimum_python_version,
                 dry_run=args.dry_run,
             )
+    update_spdx_copyright(
+        [
+            *SPDX_FILES,
+            *sorted(PACKAGE_DIR.glob("*.py")),
+        ],
+        project_title=project_title,
+        dry_run=args.dry_run,
+    )
     rename_package_dir(package_name, dry_run=args.dry_run)
     return 0
 

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 the Python Template contributors
+#
+# SPDX-License-Identifier: BSD-2-Clause
+
 from project_name.greeter import Greeter
 
 if __name__ == "__main__":

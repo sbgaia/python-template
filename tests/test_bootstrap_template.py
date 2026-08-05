@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 the Python Template contributors
+#
+# SPDX-License-Identifier: BSD-2-Clause
+
 import subprocess
 import sys
 from pathlib import Path
@@ -5,11 +9,13 @@ from pathlib import Path
 import pytest
 
 from scripts.bootstrap_template import (
+    PLACEHOLDER_COPYRIGHT,
     format_tox_env,
     normalize_distribution_name,
     normalize_minimum_python_version,
     parse_args,
     resolve_metadata,
+    update_spdx_copyright,
     versions_from_minimum,
 )
 
@@ -396,3 +402,115 @@ def test_bootstrap_template_updates_minimum_python_version(
     assert "project_name" not in docker_ci
     assert 'name = "demo-service"' in uv_lock
     assert f'requires-python = ">={minimum_python_version}, <4"' in uv_lock
+
+
+# These fixtures quote SPDX tags as data. The markers stop `reuse lint` from
+# parsing them as annotations on this file.
+# REUSE-IgnoreStart
+SPDX_HEADER = (
+    "# SPDX-FileCopyrightText: 2026 the Python Template contributors\n"
+    "#\n"
+    "# SPDX-License-Identifier: BSD-2-Clause\n"
+    "\n"
+    '"""Module."""\n'
+)
+REUSE_TOML = (
+    "version = 1\n"
+    "\n"
+    "[[annotations]]\n"
+    'path = ["README.md"]\n'
+    'precedence = "aggregate"\n'
+    'SPDX-FileCopyrightText = "2026 the Python Template contributors"\n'
+    'SPDX-License-Identifier = "BSD-2-Clause"\n'
+)
+# REUSE-IgnoreEnd
+
+
+def test_update_spdx_copyright_rewrites_inline_headers(tmp_path: Path) -> None:
+    module = tmp_path / "mod.py"
+    module.write_text(SPDX_HEADER, encoding="utf-8")
+
+    update_spdx_copyright(
+        [module],
+        project_title="Acme Tool",
+        dry_run=False,
+    )
+
+    content = module.read_text(encoding="utf-8")
+    assert "2026 the Acme Tool contributors" in content
+    assert PLACEHOLDER_COPYRIGHT not in content
+
+
+def test_update_spdx_copyright_rewrites_reuse_toml(tmp_path: Path) -> None:
+    reuse_toml = tmp_path / "REUSE.toml"
+    reuse_toml.write_text(REUSE_TOML, encoding="utf-8")
+
+    update_spdx_copyright(
+        [reuse_toml],
+        project_title="Acme Tool",
+        dry_run=False,
+    )
+
+    content = reuse_toml.read_text(encoding="utf-8")
+    assert (
+        'SPDX-FileCopyrightText = "2026 the Acme Tool contributors"' in content
+    )
+
+
+def test_update_spdx_copyright_preserves_license_identifier(
+    tmp_path: Path,
+) -> None:
+    module = tmp_path / "mod.py"
+    module.write_text(SPDX_HEADER, encoding="utf-8")
+
+    update_spdx_copyright(
+        [module],
+        project_title="Acme Tool",
+        dry_run=False,
+    )
+
+    content = module.read_text(encoding="utf-8")
+    # REUSE-IgnoreStart
+    assert "# SPDX-License-Identifier: BSD-2-Clause" in content
+    # REUSE-IgnoreEnd
+
+
+def test_update_spdx_copyright_dry_run_leaves_files_untouched(
+    tmp_path: Path,
+) -> None:
+    module = tmp_path / "mod.py"
+    module.write_text(SPDX_HEADER, encoding="utf-8")
+
+    update_spdx_copyright(
+        [module],
+        project_title="Acme Tool",
+        dry_run=True,
+    )
+
+    assert module.read_text(encoding="utf-8") == SPDX_HEADER
+
+
+def test_update_spdx_copyright_ignores_missing_files(tmp_path: Path) -> None:
+    update_spdx_copyright(
+        [tmp_path / "absent.py"],
+        project_title="Acme Tool",
+        dry_run=False,
+    )
+
+
+def test_release_workflow_is_a_bootstrap_target() -> None:
+    from scripts.bootstrap_template import WORKFLOW_FILES
+
+    assert Path(".github/workflows/release.yaml") in WORKFLOW_FILES
+
+
+def test_spdx_files_cover_the_new_automation_scripts() -> None:
+    from scripts.bootstrap_template import SPDX_FILES
+
+    for path in (
+        Path("REUSE.toml"),
+        Path("scripts/release.py"),
+        Path("scripts/gen_changelog.py"),
+        Path("scripts/add_spdx_headers.py"),
+    ):
+        assert path in SPDX_FILES

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 the Python Template contributors
+#
+# SPDX-License-Identifier: BSD-2-Clause
+
 """Sphinx configuration for the project documentation."""
 
 from __future__ import annotations
@@ -26,7 +30,15 @@ source_suffix = {
     ".md": "markdown",
     ".rst": "restructuredtext",
 }
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+# `superpowers/` holds development plans and design notes, not published
+# documentation. They are not in any toctree and quote code that the
+# highlighter cannot lex, both of which are errors under `sphinx -W`.
+exclude_patterns = [
+    "_build",
+    "Thumbs.db",
+    ".DS_Store",
+    "superpowers/**",
+]
 
 html_theme = "furo"
 html_title = "project_name documentation"

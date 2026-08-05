@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 the Python Template contributors
+#
+# SPDX-License-Identifier: BSD-2-Clause
+
 import os
 import shutil
 import subprocess
@@ -26,10 +30,13 @@ PLACEHOLDER_CHECK_PATHS = (
     ".github/workflows/documentation.yaml",
     ".github/workflows/package.yaml",
     ".github/workflows/quality.yaml",
+    ".github/workflows/release.yaml",
     ".github/workflows/security.yaml",
     ".github/workflows/template-smoke.yaml",
     ".github/workflows/tests.yaml",
     "README.md",
+    "REUSE.toml",
+    "cliff.toml",
     "docs/api.md",
     "docs/conf.py",
     "docs/documentation.md",
@@ -37,6 +44,9 @@ PLACEHOLDER_CHECK_PATHS = (
     "docs/template.md",
     "docs/usage.md",
     "pyproject.toml",
+    "scripts/add_spdx_headers.py",
+    "scripts/gen_changelog.py",
+    "scripts/release.py",
     "tox.ini",
 )
 
@@ -120,3 +130,22 @@ def test_generated_project_bootstraps_and_builds(tmp_path: Path) -> None:
         content = (generated_repo / relative_path).read_text(encoding="utf-8")
         assert "project_name" not in content, relative_path
         assert "python-template" not in content, relative_path
+
+    reuse_toml = (generated_repo / "REUSE.toml").read_text(encoding="utf-8")
+    assert "the Demo Service contributors" in reuse_toml
+    assert "the Python Template contributors" not in reuse_toml
+
+    package_modules = sorted(
+        path
+        for path in (generated_repo / "demo_service").glob("*.py")
+        if path.stat().st_size > 0
+    )
+    assert package_modules
+
+    for module in package_modules:
+        content = module.read_text(encoding="utf-8")
+        # REUSE-IgnoreStart
+        assert "SPDX-License-Identifier: BSD-2-Clause" in content, str(module)
+        # REUSE-IgnoreEnd
+        assert "the Demo Service contributors" in content, str(module)
+        assert "the Python Template contributors" not in content, str(module)

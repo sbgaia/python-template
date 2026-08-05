@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 the Python Template contributors
+#
+# SPDX-License-Identifier: BSD-2-Clause
+
 import logging
 from enum import Enum
 from typing import ClassVar
