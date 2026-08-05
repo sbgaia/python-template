@@ -1,6 +1,9 @@
 version: 2
 updates:
-- package-ecosystem: pip
+# The `uv` ecosystem understands pyproject.toml *and* uv.lock. The `pip`
+# ecosystem does not update uv.lock, so transitive pins there (which CI
+# installs, because every job runs with --locked) would never be bumped.
+- package-ecosystem: uv
   directory: /
   schedule:
     interval: weekly
