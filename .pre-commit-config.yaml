@@ -40,8 +40,12 @@ repos:
 - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
   rev: v2.16.0
   hooks:
+  # --preserve-quotes matters: ruamel follows YAML 1.2, where a bare 06:00
+  # is a string, so without it the formatter strips "redundant" quotes that
+  # YAML 1.1 parsers (Ruby's Psych, used by Dependabot) need in order to
+  # read the value as a string instead of the integer 21600.
   - id: pretty-format-yaml
-    args: [--autofix, --indent, '2']
+    args: [--autofix, --indent, '2', --preserve-quotes]
   # Check for common spelling mistakes
 - repo: https://github.com/codespell-project/codespell
   rev: v2.4.2
