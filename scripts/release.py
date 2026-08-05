@@ -19,6 +19,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import os
 import re
 import subprocess
@@ -27,6 +28,17 @@ from collections.abc import Callable
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+# The hook config sets fail_fast, so each pass stops at the first hook that
+# rewrites something and only the next pass reaches the hooks after it. A
+# freshly generated changelog routinely needs one pass per formatting hook
+# (whitespace, then end-of-file, then mdformat) plus one to confirm. This is
+# only a runaway guard: hooks that fail without rewriting anything abort on
+# the spot, so a high ceiling costs nothing.
+MAX_HOOK_PASSES = 10
+# The header git-cliff must match for --prepend to insert below it, as
+# rendered by the `header` setting in cliff.toml.
+CHANGELOG_HEADER = "# Changelog\n\n"
+CHANGELOG_PATH = REPO_ROOT / "CHANGELOG.md"
 VERSION_PATTERN = re.compile(r"^\d+\.\d+\.\d+(?:[.-][0-9A-Za-z.-]+)?$")
 VERSION_LINE = re.compile(r'^version\s*=\s*"[^"]*"', re.MULTILINE)
 
@@ -208,10 +220,30 @@ def sync_lockfile(*, runner: Runner = run) -> None:
     runner(["uv", "lock", "--check"])
 
 
+def can_prepend(path: Path) -> bool:
+    """Return whether git-cliff can prepend to an existing changelog.
+
+    git-cliff only recognises the ``# Changelog`` header when a blank line
+    follows it. Against a header-only CHANGELOG.md — the committed state
+    before the first release — the match fails silently and git-cliff
+    appends a second ``# Changelog`` at the bottom of the file instead.
+
+    Args:
+        path: Path to the existing changelog.
+
+    Returns:
+        True if the file starts with a header git-cliff will match.
+    """
+    if not path.is_file():
+        return False
+    return path.read_text(encoding="utf-8").startswith(CHANGELOG_HEADER)
+
+
 def generate_changelog(
     tag: str,
     prev: str | None,
     *,
+    changelog: Path = CHANGELOG_PATH,
     runner: Runner = run,
 ) -> None:
     """Write the new release section into CHANGELOG.md.
@@ -221,15 +253,18 @@ def generate_changelog(
     given, and because only a full render emits the ``# Changelog``
     header. Once one release exists the file starts with that header
     followed by a blank line, which git-cliff recognises, so later
-    releases are prepended above the previous section.
+    releases are prepended above the previous section. A changelog without
+    that header is regenerated too, rather than prepended to, so a tag
+    created outside this script cannot leave a duplicated header behind.
 
     Args:
         tag: The release tag, including the leading 'v'.
         prev: The previous release tag, if any.
+        changelog: The changelog to inspect, injectable for tests.
         runner: Command runner, injectable for tests.
     """
     script = str(REPO_ROOT / "scripts" / "gen_changelog.py")
-    if prev is None:
+    if prev is None or not can_prepend(changelog):
         runner([sys.executable, script, "--tag", tag, "-o", "CHANGELOG.md"])
         return
     runner(
@@ -245,20 +280,67 @@ def generate_changelog(
     )
 
 
-def run_hooks(files: list[str], *, runner: Runner = run) -> None:
-    """Run the pre-commit hooks over the release files.
+def digest_files(files: list[str]) -> dict[str, str | None]:
+    """Return a content digest per file, for detecting hook rewrites.
 
-    The first pass may rewrite files (formatters, end-of-file-fixer), which
-    pre-commit reports as a non-zero exit even though nothing is wrong, so
-    its status is ignored. The second pass must come back clean.
+    Args:
+        files: Paths to digest, relative to the current directory.
+
+    Returns:
+        A mapping of path to hex digest, or to None when the file is absent.
+    """
+    digests: dict[str, str | None] = {}
+    for name in files:
+        path = Path(name)
+        digests[name] = (
+            hashlib.sha256(path.read_bytes()).hexdigest()
+            if path.is_file()
+            else None
+        )
+    return digests
+
+
+def run_hooks(
+    files: list[str],
+    *,
+    max_passes: int = MAX_HOOK_PASSES,
+    runner: Runner = run,
+) -> None:
+    """Run the pre-commit hooks until they report no errors.
+
+    Hooks that rewrite files (formatters, end-of-file-fixer) exit non-zero
+    on the pass that made the change, so reaching a clean run takes at least
+    one retry. Retrying only helps while the files keep changing: a hook
+    that reports an error without fixing anything will report it again, so
+    that case aborts immediately rather than repeating the same failure.
 
     Args:
         files: Paths to check, passed to ``pre-commit run --files``.
+        max_passes: Number of passes to allow before giving up.
         runner: Command runner, injectable for tests.
+
+    Raises:
+        SystemExit: If the hooks never come back clean.
     """
     command = ["uv", "run", "pre-commit", "run", "--files", *files]
-    runner(command, check=False)
-    runner(command)
+    before = digest_files(files)
+    for attempt in range(1, max_passes + 1):
+        if runner(command, check=False).returncode == 0:
+            return
+        after = digest_files(files)
+        if after == before:
+            raise SystemExit(
+                "error: pre-commit reported problems it cannot fix "
+                "automatically; resolve them, then re-run the release"
+            )
+        before = after
+        print(
+            f"pre-commit rewrote files; retrying (pass {attempt + 1})",
+            file=sys.stderr,
+        )
+    raise SystemExit(
+        f"error: pre-commit still rewriting files after {max_passes} passes"
+    )
 
 
 def main() -> int:

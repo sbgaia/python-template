@@ -13,7 +13,9 @@ import pytest
 from scripts.release import (
     REPO_ROOT,
     bump_pyproject,
+    can_prepend,
     changelog_range,
+    digest_files,
     generate_changelog,
     main,
     previous_tag,
@@ -202,22 +204,101 @@ def test_sync_lockfile_locks_then_verifies() -> None:
     assert runner.commands == [["uv", "lock"], ["uv", "lock", "--check"]]
 
 
-def test_run_hooks_checks_the_given_files_twice() -> None:
+class RewritingRunner:
+    """Fakes pre-commit hooks that rewrite a file and exit non-zero.
+
+    Args:
+        path: File the fake hook rewrites.
+        rewrites: Number of passes that rewrite the file before it settles.
+    """
+
+    def __init__(self, path: Path, rewrites: int) -> None:
+        self.path = path
+        self.rewrites = rewrites
+        self.commands: list[list[str]] = []
+
+    def __call__(
+        self,
+        command: list[str],
+        *,
+        check: bool = True,
+        capture: bool = False,
+    ) -> subprocess.CompletedProcess[str]:
+        self.commands.append(command)
+        if len(self.commands) > self.rewrites:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        self.path.write_text("x" * len(self.commands), encoding="utf-8")
+        return subprocess.CompletedProcess(command, 1, "", "")
+
+
+def test_run_hooks_checks_the_given_files_once_when_clean() -> None:
     runner = FakeRunner()
 
     run_hooks(["CHANGELOG.md"], runner=runner)
 
-    expected = ["uv", "run", "pre-commit", "run", "--files", "CHANGELOG.md"]
-    assert runner.commands == [expected, expected]
+    assert runner.commands == [
+        ["uv", "run", "pre-commit", "run", "--files", "CHANGELOG.md"]
+    ]
+    assert runner.checks == [False]
 
 
-def test_run_hooks_tolerates_files_rewritten_by_the_first_pass() -> None:
-    """A hook that fixes a file exits non-zero; only the retry must pass."""
-    runner = FakeRunner()
+def test_run_hooks_retries_while_the_hooks_keep_rewriting_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A hook that fixes a file exits non-zero, so a retry is required."""
+    (tmp_path / "CHANGELOG.md").write_text("# Changelog", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    runner = RewritingRunner(tmp_path / "CHANGELOG.md", rewrites=1)
 
     run_hooks(["CHANGELOG.md"], runner=runner)
 
-    assert runner.checks == [False, True]
+    assert len(runner.commands) == 2
+
+
+def test_run_hooks_aborts_at_once_when_no_file_was_rewritten(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A failure the hooks cannot fix must not be retried."""
+    (tmp_path / "CHANGELOG.md").write_text("# Changelog", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    failing = subprocess.CompletedProcess([], 1, "", "")
+    key = "uv run pre-commit run --files CHANGELOG.md"
+    runner = FakeRunner({key: failing})
+
+    with pytest.raises(SystemExit, match="cannot fix"):
+        run_hooks(["CHANGELOG.md"], runner=runner)
+
+    assert len(runner.commands) == 1
+
+
+def test_run_hooks_gives_up_after_the_pass_limit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Hooks that fight over a file must not loop forever."""
+    (tmp_path / "CHANGELOG.md").write_text("# Changelog", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    runner = RewritingRunner(tmp_path / "CHANGELOG.md", rewrites=99)
+
+    with pytest.raises(SystemExit, match="after 3 passes"):
+        run_hooks(["CHANGELOG.md"], max_passes=3, runner=runner)
+
+    assert len(runner.commands) == 3
+
+
+def test_digest_files_reports_none_for_a_missing_file(tmp_path: Path) -> None:
+    missing = str(tmp_path / "absent.md")
+
+    assert digest_files([missing]) == {missing: None}
+
+
+def test_digest_files_changes_when_a_file_changes(tmp_path: Path) -> None:
+    path = tmp_path / "CHANGELOG.md"
+    path.write_text("a", encoding="utf-8")
+    before = digest_files([str(path)])
+
+    path.write_text("b", encoding="utf-8")
+
+    assert digest_files([str(path)]) != before
 
 
 def test_changelog_range_is_empty_without_a_previous_tag() -> None:
@@ -239,12 +320,75 @@ def test_generate_changelog_regenerates_when_there_is_no_previous_tag() -> None:
     assert command[command.index("-o") + 1] == "CHANGELOG.md"
 
 
-def test_generate_changelog_prepends_when_a_previous_tag_exists() -> None:
+def released_changelog(tmp_path: Path) -> Path:
+    """Write a changelog in the state left by an earlier release."""
+    path = tmp_path / "CHANGELOG.md"
+    path.write_text(
+        "# Changelog\n\n## 0.0.9 - 2026-01-01\n\n- [abc1234] Old\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_generate_changelog_prepends_when_a_previous_tag_exists(
+    tmp_path: Path,
+) -> None:
     runner = FakeRunner()
 
-    generate_changelog("v0.1.0", "v0.0.9", runner=runner)
+    generate_changelog(
+        "v0.1.0",
+        "v0.0.9",
+        changelog=released_changelog(tmp_path),
+        runner=runner,
+    )
 
     command = runner.commands[0]
     assert "--prepend" in command
     assert "-o" not in command
     assert "v0.0.9..HEAD" in command
+
+
+def test_generate_changelog_regenerates_a_changelog_without_a_header(
+    tmp_path: Path,
+) -> None:
+    """Prepending to a header-only file duplicates the header instead."""
+    path = tmp_path / "CHANGELOG.md"
+    path.write_text("# Changelog\n", encoding="utf-8")
+    runner = FakeRunner()
+
+    generate_changelog("v0.1.0", "v0.0.9", changelog=path, runner=runner)
+
+    command = runner.commands[0]
+    assert "-o" in command
+    assert "--prepend" not in command
+
+
+def test_generate_changelog_regenerates_a_missing_changelog(
+    tmp_path: Path,
+) -> None:
+    runner = FakeRunner()
+
+    generate_changelog(
+        "v0.1.0",
+        "v0.0.9",
+        changelog=tmp_path / "absent.md",
+        runner=runner,
+    )
+
+    assert "-o" in runner.commands[0]
+
+
+def test_can_prepend_accepts_a_header_followed_by_a_blank_line(
+    tmp_path: Path,
+) -> None:
+    assert can_prepend(released_changelog(tmp_path)) is True
+
+
+@pytest.mark.parametrize("content", ["# Changelog\n", "", "## 0.1.0\n"])
+def test_can_prepend_rejects_an_unmatchable_header(
+    tmp_path: Path, content: str
+) -> None:
+    path = tmp_path / "CHANGELOG.md"
+    path.write_text(content, encoding="utf-8")
+
+    assert can_prepend(path) is False

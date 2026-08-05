@@ -10,7 +10,8 @@
 #
 # --prepend caveat: git-cliff only recognises the `# Changelog` header
 # above when it is followed by a blank line. CHANGELOG.md is committed as
-# a bare `# Changelog\n` (a pre-commit hook strips the blank line), so
+# a bare `# Changelog\n` (gen_changelog.py and the end-of-file-fixer hook
+# both strip trailing blank lines), so
 # `--prepend` against it does not match the header and duplicates
 # `# Changelog` at the bottom of the file instead of leaving it alone. Use
 # `-o` for a full regeneration, not `--prepend`, against the committed
@@ -37,6 +38,14 @@ trim = true
 footer = ""
 
 [git]
+# Commit subjects land verbatim in a markdown list item, so a stray double
+# space inside one is a diff the mdformat hook would make during the release.
+# Only horizontal whitespace is collapsed: `\s+` would fold the blank line
+# between subject and body into a space and drag the whole body onto the
+# subject line.
+commit_preprocessors = [
+    { pattern = "[ \\t]{2,}", replace = " " },
+]
 conventional_commits = true
 filter_unconventional = false
 split_commits = false
