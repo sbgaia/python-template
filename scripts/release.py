@@ -19,6 +19,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import subprocess
 import sys
@@ -26,7 +27,6 @@ from collections.abc import Callable
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-CONFIG = REPO_ROOT / "cliff.toml"
 VERSION_PATTERN = re.compile(r"^\d+\.\d+\.\d+(?:[.-][0-9A-Za-z.-]+)?$")
 VERSION_LINE = re.compile(r'^version\s*=\s*"[^"]*"', re.MULTILINE)
 
@@ -248,6 +248,11 @@ def generate_changelog(
 def main() -> int:
     """Run the release preparation process."""
     args = parse_args()
+    # git, git-cliff, and uv all resolve paths against the current
+    # directory. Anchoring to the repository root keeps a release invoked
+    # from a subdirectory from writing the changelog somewhere else and
+    # then aborting with the version bump already applied.
+    os.chdir(REPO_ROOT)
     version = validate_version(args.version)
     tag = f"v{version}"
 

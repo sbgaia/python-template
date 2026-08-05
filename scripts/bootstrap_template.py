@@ -76,6 +76,7 @@ SPDX_FILES = (
     Path("scripts/validate_distribution.py"),
     Path("tests/test_add_spdx_headers.py"),
     Path("tests/test_bootstrap_template.py"),
+    Path("tests/test_gen_changelog.py"),
     Path("tests/test_greeter.py"),
     Path("tests/test_release.py"),
     Path("tests/test_template_smoke.py"),

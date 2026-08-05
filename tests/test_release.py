@@ -5,23 +5,23 @@
 from __future__ import annotations
 
 import subprocess
-from typing import TYPE_CHECKING
+import sys
+from pathlib import Path
 
 import pytest
 
 from scripts.release import (
+    REPO_ROOT,
     bump_pyproject,
     changelog_range,
     generate_changelog,
+    main,
     previous_tag,
     sync_lockfile,
     tag_exists,
     validate_version,
     working_tree_dirty,
 )
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 PYPROJECT = """[project]
 name = "project_name"
@@ -55,25 +55,30 @@ class FakeRunner:
         return result
 
 
+REPO_CONFIG = {
+    # Written to the repo config rather than passed per command, so callers
+    # can commit and tag without a global git identity.
+    "user.email": "a@b",
+    "user.name": "a",
+    # Ambient signing settings would otherwise make commits and tags here
+    # depend on the contributor's keys being present and unlocked.
+    "commit.gpgsign": "false",
+    "tag.gpgSign": "false",
+}
+
+
 def git_repo(tmp_path: Path) -> Path:
-    """Create a throwaway git repo with one commit."""
+    """Create a throwaway git repo with one commit.
+
+    The repo is configured to be independent of the ambient git config, so
+    the tests behave the same for every contributor and on CI.
+    """
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    for key, value in REPO_CONFIG.items():
+        subprocess.run(["git", "config", key, value], cwd=tmp_path, check=True)
     (tmp_path / "file.txt").write_text("hello\n", encoding="utf-8")
     subprocess.run(["git", "add", "-A"], cwd=tmp_path, check=True)
-    subprocess.run(
-        [
-            "git",
-            "-c",
-            "user.email=a@b",
-            "-c",
-            "user.name=a",
-            "commit",
-            "-qm",
-            "init",
-        ],
-        cwd=tmp_path,
-        check=True,
-    )
+    subprocess.run(["git", "commit", "-qm", "init"], cwd=tmp_path, check=True)
     return tmp_path
 
 
@@ -173,6 +178,17 @@ def test_previous_tag_returns_most_recent_reachable_tag(
     monkeypatch.chdir(repo)
 
     assert previous_tag() == "v0.1.0"
+
+
+def test_main_operates_from_the_repository_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The release runs against the repo regardless of the caller's cwd."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", ["release.py", "99.0.0", "--dry-run"])
+
+    assert main() == 0
+    assert Path.cwd() == REPO_ROOT
 
 
 def test_sync_lockfile_locks_then_verifies() -> None:
