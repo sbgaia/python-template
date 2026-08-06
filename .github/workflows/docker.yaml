@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Build Docker image
       run: docker build --pull -t python-template:ci .
     - name: Smoke-test Docker image
