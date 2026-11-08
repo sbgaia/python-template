@@ -19,7 +19,7 @@ PLACEHOLDER_AUTHOR = "Mario Potato"
 PLACEHOLDER_AUTHOR_EMAIL = "mario.potato@univr.it"
 PLACEHOLDER_DESCRIPTION = "A simple template project."
 PLACEHOLDER_COPYRIGHT = "the Python Template contributors"
-SUPPORTED_PYTHON_VERSIONS = ("3.10", "3.11", "3.12", "3.13", "3.14")
+SUPPORTED_PYTHON_VERSIONS = ("3.11", "3.12", "3.13", "3.14")
 
 WORKFLOW_FILES = (
     Path(".github/workflows/coverage.yaml"),
@@ -157,7 +157,7 @@ def normalize_minimum_python_version(version: str) -> str:
     match = re.fullmatch(r"3\.(\d{1,2})(?:\.\d+)?", version.strip())
     if not match:
         raise ValueError(
-            "minimum_python_version must use a major.minor value like 3.10."
+            "minimum_python_version must use a major.minor value like 3.11."
         )
 
     normalized = f"3.{int(match.group(1))}"

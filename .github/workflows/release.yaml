@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  PYTHON_VERSION: '3.10'
+  PYTHON_VERSION: '3.11'
 
 jobs:
   release:
@@ -25,9 +25,8 @@ jobs:
     - uses: ./.github/actions/setup-python-uv
       with:
         python-version: ${{ env.PYTHON_VERSION }}
-    # tomllib is 3.11+, and PYTHON_VERSION is 3.10 to match this template's
-    # floor, so the version is read with a regex instead. The pattern mirrors
-    # VERSION_LINE in scripts/release.py, which writes this same line.
+    # The version is read with a regex that mirrors VERSION_LINE in
+    # scripts/release.py, which writes this same line.
     - name: Verify tag matches the project version
       run: |
         tag_version="${GITHUB_REF_NAME#v}"
