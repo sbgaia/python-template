@@ -1,9 +1,9 @@
 name: Bootstrap Template
 
+# CI paused 2026-11-08 (GitHub Actions billing lock). Revert this commit
+# to restore the original triggers.
 on:
-  create:
   workflow_dispatch:
-  push:
 
 permissions:
   contents: write

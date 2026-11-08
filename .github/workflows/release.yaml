@@ -1,9 +1,9 @@
 name: Release
 
+# CI paused 2026-11-08 (GitHub Actions billing lock). Revert this commit
+# to restore the original triggers.
 on:
-  push:
-    tags:
-    - v*
+  workflow_dispatch:
 
 permissions:
   contents: read

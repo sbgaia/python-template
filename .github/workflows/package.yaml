@@ -1,14 +1,9 @@
 name: Package
 
+# CI paused 2026-11-08 (GitHub Actions billing lock). Revert this commit
+# to restore the original triggers.
 on:
-  push:
-    branches:
-    - main
-    - dev
-  pull_request:
-    branches:
-    - main
-    - dev
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
